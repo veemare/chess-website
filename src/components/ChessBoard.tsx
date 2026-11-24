@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from 'react';
 import { getBoardMap, getLegalMovesFromSquare } from '../engine/chessCore';
 import type {
+  GameVariant,
   LastMoveHighlight,
   OpponentCurseState,
   PieceColor,
@@ -11,9 +12,11 @@ import { ChessPiece } from './ChessPiece';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1'];
+const KOTH_HILL = new Set(['d4', 'e4', 'd5', 'e5']);
 
 interface ChessBoardProps {
   fen: string;
+  variant?: GameVariant;
   orientation: PieceColor;
   playerColor: PieceColor;
   turnColor: PieceColor;
@@ -45,6 +48,7 @@ function squareToPercent(square: string, flipped: boolean): { x: number; y: numb
 
 export function ChessBoard({
   fen,
+  variant = 'standard',
   orientation,
   playerColor,
   turnColor,
@@ -110,7 +114,7 @@ export function ChessBoard({
       }
       return targets;
     }
-    return new Set(getLegalMovesFromSquare(fen, selectedSquare));
+    return new Set(getLegalMovesFromSquare(fen, selectedSquare, variant));
   })();
 
   function getDisplayedPiece(sq: string) {
@@ -285,6 +289,7 @@ export function ChessBoard({
                 inCheckColor !== null &&
                 boardMap[sq]?.type === 'k' &&
                 boardMap[sq]?.color === inCheckColor;
+              const isKothHill = variant === 'king_of_hill' && KOTH_HILL.has(sq);
 
               const dodge = dodgeOffsets[sq];
 
@@ -311,6 +316,7 @@ export function ChessBoard({
                     isLast ? 'sq-last' : '',
                     isKingInCheck ? 'sq-check' : '',
                     isCaptureTarget ? 'sq-capture' : '',
+                    isKothHill ? 'sq-koth' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}

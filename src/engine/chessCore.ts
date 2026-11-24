@@ -1,11 +1,14 @@
 import { Chess, type PieceSymbol, type Square } from 'chess.js';
-import type { PieceColor, PieceType } from '../types/chess';
+import type { GameStatus, GameVariant, PieceColor, PieceType } from '../types/chess';
 
 export interface BoardSquarePiece {
   square: string;
   color: PieceColor;
   type: PieceType;
 }
+
+const FILES = 'abcdefgh';
+const KOTH_SQUARES = new Set(['d4', 'e4', 'd5', 'e5']);
 
 const PIECE_VALUES: Record<PieceType, number> = {
   p: 100,
@@ -16,7 +19,6 @@ const PIECE_VALUES: Record<PieceType, number> = {
   k: 20000,
 };
 
-// Piece-square tables from White's perspective (rank 8 at index 0, rank 1 at index 7)
 const PAWN_PST = [
   0, 0, 0, 0, 0, 0, 0, 0,
   50, 50, 50, 50, 50, 50, 50, 50,
@@ -89,6 +91,48 @@ function loadSafe(fen: string): Chess {
   return c;
 }
 
+export function generateChess960StartFen(): string {
+  const rank: Array<string | null> = Array(8).fill(null);
+
+  // Light square bishop (indices 1, 3, 5, 7) & Dark square bishop (0, 2, 4, 6)
+  const lightIdx = [1, 3, 5, 7][Math.floor(Math.random() * 4)];
+  const darkIdx = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
+  rank[lightIdx] = 'B';
+  rank[darkIdx] = 'B';
+
+  const emptyIndices = () =>
+    rank.map((v, i) => (v === null ? i : -1)).filter((i) => i !== -1);
+
+  // Queen
+  const qPool = emptyIndices();
+  rank[qPool[Math.floor(Math.random() * qPool.length)]] = 'Q';
+
+  // Two Knights
+  for (let n = 0; n < 2; n++) {
+    const nPool = emptyIndices();
+    rank[nPool[Math.floor(Math.random() * nPool.length)]] = 'N';
+  }
+
+  // Remaining 3 squares MUST be R - K - R left to right
+  const rem = emptyIndices();
+  rank[rem[0]] = 'R';
+  rank[rem[1]] = 'K';
+  rank[rem[2]] = 'R';
+
+  const whiteBack = rank.join('');
+  const blackBack = whiteBack.toLowerCase();
+  // Keep castling flags only if K is on e-file and Rooks on corners; Chess960 otherwise starts '-'
+  const castling = whiteBack === 'RNBQKBNR' ? 'KQkq' : '-';
+  return `${blackBack}/pppppppp/8/8/8/8/PPPPPPPP/${whiteBack} w ${castling} - 0 1`;
+}
+
+export function generateStartFenForVariant(variant: GameVariant): string {
+  if (variant === 'chess960') {
+    return generateChess960StartFen();
+  }
+  return new Chess().fen();
+}
+
 export function sanitizeCastlingInFen(fen: string): string {
   const c = loadSafe(fen);
   const parts = c.fen().split(' ');
@@ -134,12 +178,11 @@ export function getBoardMap(fen: string): Record<string, BoardSquarePiece> {
   const c = loadSafe(fen);
   const board = c.board();
   const map: Record<string, BoardSquarePiece> = {};
-  const files = 'abcdefgh';
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
       const piece = board[r][f];
       if (piece) {
-        const sq = `${files[f]}${8 - r}`;
+        const sq = `${FILES[f]}${8 - r}`;
         map[sq] = { square: sq, color: piece.color, type: piece.type };
       }
     }
@@ -147,11 +190,56 @@ export function getBoardMap(fen: string): Record<string, BoardSquarePiece> {
   return map;
 }
 
-export function getLegalMovesFromSquare(fen: string, square: string): string[] {
+function findKings(c: Chess): { w: string | null; b: string | null } {
+  const board = c.board();
+  let w: string | null = null;
+  let b: string | null = null;
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const piece = board[r][f];
+      if (piece?.type === 'k') {
+        const sq = `${FILES[f]}${8 - r}`;
+        if (piece.color === 'w') w = sq;
+        else b = sq;
+      }
+    }
+  }
+  return { w, b };
+}
+
+function wouldAtomicMoveExplodeOwnKing(cBefore: Chess, from: string, to: string, mover: PieceColor): boolean {
+  const target = cBefore.get(to as Square);
+  const epSquare = cBefore.fen().split(' ')[3];
+  const movingPiece = cBefore.get(from as Square);
+  const isCapture = Boolean(target) || (movingPiece?.type === 'p' && epSquare === to);
+  if (!isCapture) return false;
+
+  // Moving king cannot capture in Atomic (own king is at explosion center)
+  if (movingPiece?.type === 'k') return true;
+
+  const kings = findKings(cBefore);
+  const ownKingSq = mover === 'w' ? kings.w : kings.b;
+  if (!ownKingSq) return false;
+
+  const df = Math.abs(FILES.indexOf(ownKingSq[0]) - FILES.indexOf(to[0]));
+  const dr = Math.abs(Number(ownKingSq[1]) - Number(to[1]));
+  return df <= 1 && dr <= 1;
+}
+
+export function getLegalMovesFromSquare(
+  fen: string,
+  square: string,
+  variant: GameVariant = 'standard'
+): string[] {
   const c = loadSafe(fen);
   try {
-    return c
-      .moves({ square: square as Square, verbose: true })
+    const raw = c.moves({ square: square as Square, verbose: true });
+    if (variant !== 'atomic') {
+      return raw.map((m) => m.to);
+    }
+    const mover = c.turn();
+    return raw
+      .filter((m) => !wouldAtomicMoveExplodeOwnKing(c, m.from, m.to, mover))
       .map((m) => m.to);
   } catch {
     return [];
@@ -166,19 +254,86 @@ export function needsPromotion(fen: string, from: string, to: string): boolean {
   return (piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1');
 }
 
-export function getOutcomeFromFen(fen: string): {
-  status: 'active' | 'checkmate' | 'stalemate' | 'draw';
+export function getOutcomeFromFen(
+  fen: string,
+  variant: GameVariant = 'standard',
+  whiteChecks = 0,
+  blackChecks = 0
+): {
+  status: GameStatus;
   winner: PieceColor | 'draw' | null;
   reason: string | null;
   inCheckColor: PieceColor | null;
 } {
   const c = loadSafe(fen);
+  const kings = findKings(c);
+
+  if (!kings.w && kings.b) {
+    return {
+      status: 'variant_win',
+      winner: 'b',
+      reason: 'Atomic explosion — Black wins',
+      inCheckColor: null,
+    };
+  }
+  if (!kings.b && kings.w) {
+    return {
+      status: 'variant_win',
+      winner: 'w',
+      reason: 'Atomic explosion — White wins',
+      inCheckColor: null,
+    };
+  }
+
+  if (variant === 'king_of_hill') {
+    if (kings.w && KOTH_SQUARES.has(kings.w)) {
+      return {
+        status: 'variant_win',
+        winner: 'w',
+        reason: 'King of the Hill — White reached the hill',
+        inCheckColor: null,
+      };
+    }
+    if (kings.b && KOTH_SQUARES.has(kings.b)) {
+      return {
+        status: 'variant_win',
+        winner: 'b',
+        reason: 'King of the Hill — Black reached the hill',
+        inCheckColor: null,
+      };
+    }
+  }
+
+  if (variant === 'three_check') {
+    if (whiteChecks >= 3) {
+      return {
+        status: 'variant_win',
+        winner: 'w',
+        reason: 'Three-Check — White delivered 3 checks',
+        inCheckColor: c.inCheck() ? c.turn() : null,
+      };
+    }
+    if (blackChecks >= 3) {
+      return {
+        status: 'variant_win',
+        winner: 'b',
+        reason: 'Three-Check — Black delivered 3 checks',
+        inCheckColor: c.inCheck() ? c.turn() : null,
+      };
+    }
+  }
+
   const turn = c.turn();
-  const inCheck = c.inCheck();
+  const inCheck = kings.w && kings.b ? c.inCheck() : false;
 
   let hasMoves = false;
   try {
-    hasMoves = c.moves().length > 0;
+    if (variant === 'atomic') {
+      const all = c.moves({ verbose: true });
+      hasMoves = all.some((m) => !wouldAtomicMoveExplodeOwnKing(c, m.from, m.to, turn));
+    } else {
+      hasMoves = c.moves().length > 0;
+    }
   } catch {
     hasMoves = false;
   }
@@ -200,7 +355,7 @@ export function getOutcomeFromFen(fen: string): {
     };
   }
 
-  if (c.isInsufficientMaterial()) {
+  if (variant === 'standard' && c.isInsufficientMaterial()) {
     return {
       status: 'draw',
       winner: 'draw',
@@ -222,22 +377,54 @@ export function applyStandardMove(
   from: string,
   to: string,
   promotion: Exclude<PieceType, 'p' | 'k'> = 'q',
-  keepTurnAfter = false
-): { fenAfter: string; san: string } | null {
+  keepTurnAfter = false,
+  variant: GameVariant = 'standard'
+): { fenAfter: string; san: string; deliveredCheck: boolean } | null {
   const c = loadSafe(fen);
+  const movingColor = c.turn();
+
+  if (variant === 'atomic' && wouldAtomicMoveExplodeOwnKing(c, from, to, movingColor)) {
+    return null;
+  }
+
   try {
-    const movingColor = c.turn();
     const move = c.move({
       from: from as Square,
       to: to as Square,
       promotion,
     });
     if (!move) return null;
+
+    if (variant === 'atomic' && move.captured) {
+      // Remove capturing piece on `to` and all non-pawn pieces in 3x3 blast radius
+      c.remove(to as Square);
+      const tf = FILES.indexOf(to[0]);
+      const tr = Number(to[1]);
+      for (let df = -1; df <= 1; df++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          const nf = tf + df;
+          const nr = tr + dr;
+          if (nf < 0 || nf > 7 || nr < 1 || nr > 8) continue;
+          const adjSq = `${FILES[nf]}${nr}` as Square;
+          const adjPiece = c.get(adjSq);
+          if (adjPiece && adjPiece.type !== 'p') {
+            c.remove(adjSq);
+          }
+        }
+      }
+    }
+
     let fenAfter = sanitizeCastlingInFen(c.fen());
     if (keepTurnAfter) {
       fenAfter = forceTurnInFen(fenAfter, movingColor);
     }
-    return { fenAfter, san: move.san };
+
+    const post = loadSafe(fenAfter);
+    const kings = findKings(post);
+    const deliveredCheck =
+      Boolean(kings.w && kings.b) && post.turn() !== movingColor && post.inCheck();
+
+    return { fenAfter, san: move.san, deliveredCheck };
   } catch {
     return null;
   }
@@ -248,13 +435,13 @@ export function applyTrollMovePiece(
   from: string,
   to: string,
   keepTurnAfter: boolean
-): { fenAfter: string; san: string } | null {
+): { fenAfter: string; san: string; deliveredCheck: boolean } | null {
   if (from === to) return null;
   const c = loadSafe(fen);
   const piece = c.get(from as Square);
   if (!piece) return null;
   const target = c.get(to as Square);
-  if (target?.type === 'k') return null; // Keep kings on board for real checkmates
+  if (target?.type === 'k') return null;
 
   c.remove(from as Square);
   c.put({ type: piece.type as PieceSymbol, color: piece.color }, to as Square);
@@ -264,7 +451,10 @@ export function applyTrollMovePiece(
   const currentTurn = c.turn();
   const nextTurn: PieceColor = keepTurnAfter ? currentTurn : currentTurn === 'w' ? 'b' : 'w';
   const fenAfter = forceTurnInFen(c.fen(), nextTurn);
-  return { fenAfter, san };
+
+  const post = loadSafe(fenAfter);
+  const deliveredCheck = post.turn() !== currentTurn && post.inCheck();
+  return { fenAfter, san, deliveredCheck };
 }
 
 export function applyTransformPiece(
@@ -374,10 +564,12 @@ export function findBestMove(
   depth = 3
 ): { from: string; to: string; san: string; promotion?: Exclude<PieceType, 'p' | 'k'>; evalCp: number } | null {
   const c = loadSafe(fen);
+  const kings = findKings(c);
+  if (!kings.w || !kings.b) return null;
+
   const moves = c.moves({ verbose: true });
   if (moves.length === 0) return null;
 
-  // MVV-LVA ordering for quick alpha-beta pruning
   moves.sort((a, b) => {
     const aScore = (a.captured ? PIECE_VALUES[a.captured] * 10 : 0) + (a.promotion ? 800 : 0);
     const bScore = (b.captured ? PIECE_VALUES[b.captured] * 10 : 0) + (b.promotion ? 800 : 0);

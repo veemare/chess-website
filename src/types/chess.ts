@@ -1,6 +1,27 @@
 export type PieceColor = 'w' | 'b';
 export type PieceType = 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
 
+export type GameVariant =
+  | 'standard'
+  | 'chess960'
+  | 'three_check'
+  | 'king_of_hill'
+  | 'atomic';
+
+export interface GameVariantInfo {
+  id: GameVariant;
+  label: string;
+  shortDesc: string;
+}
+
+export const GAME_VARIANTS: GameVariantInfo[] = [
+  { id: 'standard', label: 'Standard', shortDesc: 'Classic FIDE rules' },
+  { id: 'chess960', label: 'Chess960', shortDesc: 'Fischer Random starting rank' },
+  { id: 'three_check', label: 'Three-Check', shortDesc: 'Deliver 3 checks to win' },
+  { id: 'king_of_hill', label: 'King of the Hill', shortDesc: 'Reach d4/e4/d5/e5 with King' },
+  { id: 'atomic', label: 'Atomic', shortDesc: 'Captures explode adjacent non-pawns' },
+];
+
 export interface TimeControlPreset {
   id: string;
   label: string;
@@ -10,11 +31,18 @@ export interface TimeControlPreset {
 }
 
 export const TIME_CONTROLS: TimeControlPreset[] = [
-  { id: '1+0', label: '1 + 0', category: 'Bullet', baseMs: 60_000, incMs: 0 },
-  { id: '3+0', label: '3 + 0', category: 'Blitz', baseMs: 180_000, incMs: 0 },
-  { id: '3+2', label: '3 + 2', category: 'Blitz', baseMs: 180_000, incMs: 2_000 },
-  { id: '5+0', label: '5 + 0', category: 'Blitz', baseMs: 300_000, incMs: 0 },
-  { id: '10+0', label: '10 + 0', category: 'Rapid', baseMs: 600_000, incMs: 0 },
+  { id: '1+0', label: '1 | 0', category: 'Bullet', baseMs: 60_000, incMs: 0 },
+  { id: '1+1', label: '1 | 1', category: 'Bullet', baseMs: 60_000, incMs: 1_000 },
+  { id: '2+1', label: '2 | 1', category: 'Bullet', baseMs: 120_000, incMs: 1_000 },
+  { id: '3+0', label: '3 | 0', category: 'Blitz', baseMs: 180_000, incMs: 0 },
+  { id: '3+2', label: '3 | 2', category: 'Blitz', baseMs: 180_000, incMs: 2_000 },
+  { id: '5+0', label: '5 | 0', category: 'Blitz', baseMs: 300_000, incMs: 0 },
+  { id: '5+3', label: '5 | 3', category: 'Blitz', baseMs: 300_000, incMs: 3_000 },
+  { id: '5+5', label: '5 | 5', category: 'Blitz', baseMs: 300_000, incMs: 5_000 },
+  { id: '10+0', label: '10 | 0', category: 'Rapid', baseMs: 600_000, incMs: 0 },
+  { id: '10+5', label: '10 | 5', category: 'Rapid', baseMs: 600_000, incMs: 5_000 },
+  { id: '15+10', label: '15 | 10', category: 'Rapid', baseMs: 900_000, incMs: 10_000 },
+  { id: '30+0', label: '30 | 0', category: 'Rapid', baseMs: 1_800_000, incMs: 0 },
   { id: 'untimed', label: 'Untimed', category: 'Untimed', baseMs: 0, incMs: 0 },
 ];
 
@@ -32,6 +60,48 @@ export interface PublicUser {
   role: 'owner' | 'user';
   createdAt: number;
   trollAccess: TrollAccessSummary;
+}
+
+export interface FriendSummary {
+  id: string;
+  username: string;
+  displayName: string;
+  online: boolean;
+  lastSeenAt: number | null;
+}
+
+export interface FriendRequestSummary {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  createdAt: number;
+}
+
+export interface DirectChallengeSummary {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  roomCode: string;
+  variant: GameVariant;
+  timeControlId: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  hostColor: PieceColor;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  createdAt: number;
+}
+
+export interface SocialStateResponse {
+  friends: FriendSummary[];
+  incomingRequests: FriendRequestSummary[];
+  outgoingRequests: FriendRequestSummary[];
+  incomingChallenges: DirectChallengeSummary[];
+  outgoingChallenges: DirectChallengeSummary[];
 }
 
 export interface MoveRecord {
@@ -57,16 +127,23 @@ export type GameStatus =
   | 'stalemate'
   | 'draw'
   | 'resigned'
-  | 'timeout';
+  | 'timeout'
+  | 'variant_win';
 
 export interface AuthoritativeGameState {
   version: number;
+  variant: GameVariant;
   fen: string;
   moves: MoveRecord[];
   lastMove: LastMoveHighlight | null;
   whiteMs: number;
   blackMs: number;
   timeControlId: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  whiteChecks: number;
+  blackChecks: number;
   lastTickAt: number | null;
   status: GameStatus;
   winner: PieceColor | 'draw' | null;
@@ -105,10 +182,20 @@ export type RoomNetworkMode = 'idle' | 'connecting' | 'p2p' | 'local-tab' | 'rel
 
 export type RoomWireMessage =
   | {
+      type: 'invite_preview_request';
+      peerClientId: string;
+    }
+  | {
+      type: 'invite_preview';
+      hostName: string;
+      hostColor: PieceColor;
+      variant: GameVariant;
+      timeControlLabel: string;
+    }
+  | {
       type: 'hello';
       peerClientId: string;
       name: string;
-      preferredHostColor?: PieceColor;
     }
   | {
       type: 'room_init';

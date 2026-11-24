@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Chess } from 'chess.js';
 import { AccountModal } from './components/AccountModal';
 import { ChessBoard } from './components/ChessBoard';
 import { ChessPiece } from './components/ChessPiece';
+import { FriendsModal } from './components/FriendsModal';
 import {
   BotIcon,
   BrandCrownIcon,
@@ -13,6 +13,7 @@ import {
   FlipIcon,
   SendIcon,
   UserIcon,
+  UsersIcon,
 } from './components/Icons';
 import { OperatorDrawer } from './components/OperatorDrawer';
 import {
@@ -22,42 +23,67 @@ import {
   applyTrollMovePiece,
   findBestMove,
   forceTurnInFen,
+  generateStartFenForVariant,
   getBoardMap,
   getCapturedPieces,
+  getLegalMovesFromSquare,
   getOutcomeFromFen,
   getTurnFromFen,
   needsPromotion,
 } from './engine/chessCore';
-import { fetchAuthMe } from './services/api';
+import {
+  fetchAuthMe,
+  fetchSocialState,
+  respondDirectChallenge,
+  sendDirectChallenge,
+} from './services/api';
 import { generateRoomCode, RoomTransport } from './services/multiplayer';
 import {
+  GAME_VARIANTS,
   TIME_CONTROLS,
   type AuthoritativeGameState,
   type ChatMessage,
+  type DirectChallengeSummary,
+  type FriendSummary,
+  type GameVariant,
   type OpponentCurseState,
   type PieceColor,
   type PieceType,
   type PublicUser,
   type RoomNetworkMode,
   type RoomWireMessage,
+  type SocialStateResponse,
   type TrollArmedAction,
 } from './types/chess';
 
-const INITIAL_FEN = new Chess().fen();
 const GUEST_STORAGE_KEY = 'vesper64_guest_name';
 
-function createInitialGameState(timeControlId: string, status: AuthoritativeGameState['status']): AuthoritativeGameState {
-  const preset = TIME_CONTROLS.find((t) => t.id === timeControlId) ?? TIME_CONTROLS[3];
+type TimerCategory = 'Bullet' | 'Blitz' | 'Rapid' | 'Custom';
+
+function createInitialGameState(input: {
+  variant: GameVariant;
+  timeControlId: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  status: AuthoritativeGameState['status'];
+}): AuthoritativeGameState {
   return {
     version: 1,
-    fen: INITIAL_FEN,
+    variant: input.variant,
+    fen: generateStartFenForVariant(input.variant),
     moves: [],
     lastMove: null,
-    whiteMs: preset.baseMs,
-    blackMs: preset.baseMs,
-    timeControlId: preset.id,
+    whiteMs: input.baseMs,
+    blackMs: input.baseMs,
+    timeControlId: input.timeControlId,
+    timeControlLabel: input.timeControlLabel,
+    baseMs: input.baseMs,
+    incMs: input.incMs,
+    whiteChecks: 0,
+    blackChecks: 0,
     lastTickAt: null,
-    status,
+    status: input.status,
     winner: null,
     statusReason: null,
     frozenColor: null,
@@ -72,6 +98,16 @@ function emptyCurses(): OpponentCurseState {
     disguisedSquares: {},
     gaslightLastMove: null,
     arbiterNotice: null,
+  };
+}
+
+function emptySocial(): SocialStateResponse {
+  return {
+    friends: [],
+    incomingRequests: [],
+    outgoingRequests: [],
+    incomingChallenges: [],
+    outgoingChallenges: [],
   };
 }
 
@@ -135,12 +171,30 @@ export default function App() {
   const [requiresClaimCode, setRequiresClaimCode] = useState(false);
   const [guestName, setGuestName] = useState<string>(loadGuestName);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [friendsModalOpen, setFriendsModalOpen] = useState(false);
+  const [social, setSocial] = useState<SocialStateResponse>(emptySocial);
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  // Arena mode & room state
+  // Lobby & Variant / Timer config
   const [arenaMode, setArenaMode] = useState<'friend' | 'bot'>('friend');
+  const [selectedVariant, setSelectedVariant] = useState<GameVariant>('standard');
+  const [timerCategory, setTimerCategory] = useState<TimerCategory>('Blitz');
+  const [selectedTimeControl, setSelectedTimeControl] = useState<string>('5+0');
+  const [customMinutes, setCustomMinutes] = useState<number>(7);
+  const [customIncrement, setCustomIncrement] = useState<number>(3);
+  const [preferredColor, setPreferredColor] = useState<'random' | PieceColor>('random');
+
+  // Room & Lichess-style Invite Gate state
   const [roomCode, setRoomCode] = useState<string | null>(() => parseRoomFromUrl());
   const [isHost, setIsHost] = useState<boolean>(() => !parseRoomFromUrl());
+  const [inviteJoined, setInviteJoined] = useState<boolean>(false);
+  const [invitePreview, setInvitePreview] = useState<{
+    hostName: string;
+    hostColor: PieceColor;
+    variant: GameVariant;
+    timeControlLabel: string;
+  } | null>(null);
+  const [challengedFriendName, setChallengedFriendName] = useState<string | null>(null);
   const [networkMode, setNetworkMode] = useState<RoomNetworkMode>(() =>
     parseRoomFromUrl() ? 'connecting' : 'idle'
   );
@@ -148,8 +202,6 @@ export default function App() {
   const [opponentName, setOpponentName] = useState<string>(() =>
     parseRoomFromUrl() ? 'Waiting for opponent…' : 'Practice Board'
   );
-  const [selectedTimeControl, setSelectedTimeControl] = useState<string>('5+0');
-  const [preferredColor, setPreferredColor] = useState<'random' | PieceColor>('random');
   const [joinInput, setJoinInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -157,7 +209,14 @@ export default function App() {
   const [localColor, setLocalColor] = useState<PieceColor>('w');
   const [boardOrientation, setBoardOrientation] = useState<PieceColor>('w');
   const [gameState, setGameState] = useState<AuthoritativeGameState>(() =>
-    createInitialGameState('5+0', parseRoomFromUrl() ? 'waiting' : 'active')
+    createInitialGameState({
+      variant: 'standard',
+      timeControlId: '5+0',
+      timeControlLabel: '5 | 0',
+      baseMs: 300_000,
+      incMs: 0,
+      status: parseRoomFromUrl() ? 'waiting' : 'active',
+    })
   );
   const [pendingPromotion, setPendingPromotion] = useState<{
     from: string;
@@ -188,13 +247,33 @@ export default function App() {
 
   const localDisplayName = user ? `@${user.username}` : guestName;
 
+  const activeTimeConfig = useMemo(() => {
+    if (timerCategory === 'Custom') {
+      const mins = Math.max(1, Math.min(180, Math.round(customMinutes)));
+      const inc = Math.max(0, Math.min(60, Math.round(customIncrement)));
+      return {
+        id: `custom-${mins}+${inc}`,
+        label: `${mins} | ${inc}`,
+        baseMs: mins * 60_000,
+        incMs: inc * 1_000,
+      };
+    }
+    const found = TIME_CONTROLS.find((t) => t.id === selectedTimeControl) ?? TIME_CONTROLS[5];
+    return {
+      id: found.id,
+      label: found.label,
+      baseMs: found.baseMs,
+      incMs: found.incMs,
+    };
+  }, [timerCategory, selectedTimeControl, customMinutes, customIncrement]);
+
   const canTroll = useMemo(() => {
     if (!user?.trollAccess.active) return false;
     if (user.trollAccess.permanent) return true;
     return user.trollAccess.expiresAt !== null && user.trollAccess.expiresAt > nowTick;
   }, [user, nowTick]);
 
-  // Poll auth once on mount
+  // Initial auth check
   useEffect(() => {
     fetchAuthMe()
       .then((res) => {
@@ -203,9 +282,37 @@ export default function App() {
         setRequiresClaimCode(res.requiresClaimCode);
       })
       .catch(() => {
-        // Offline/static fallback keeps guest mode working
+        // Static offline fallback keeps guest mode working
       });
   }, []);
+
+  const refreshSocial = useCallback(async () => {
+    if (!user) {
+      setSocial(emptySocial());
+      return;
+    }
+    try {
+      const res = await fetchSocialState();
+      setSocial(res);
+    } catch {
+      // Ignore transient poll errors
+    }
+  }, [user]);
+
+  // Poll friends, online presence, and incoming challenges when signed in
+  useEffect(() => {
+    if (!user) {
+      setSocial(emptySocial());
+      return;
+    }
+    void refreshSocial();
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void refreshSocial();
+      }
+    }, 4500);
+    return () => window.clearInterval(id);
+  }, [user, refreshSocial]);
 
   // Track temporary troll grant expiration cleanly
   useEffect(() => {
@@ -214,7 +321,7 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [user]);
 
-  // Wipe private troll state immediately if access expires or user logs out
+  // Wipe private troll state if access expires or user signs out
   useEffect(() => {
     if (!canTroll) {
       setDrawerOpen(false);
@@ -250,6 +357,8 @@ export default function App() {
   localDisplayNameRef.current = localDisplayName;
   const cursesSentRef = useRef(cursesSent);
   cursesSentRef.current = cursesSent;
+  const inviteJoinedRef = useRef(inviteJoined);
+  inviteJoinedRef.current = inviteJoined;
 
   const pushSystemChat = useCallback((text: string) => {
     setChatMessages((prev) => [
@@ -264,7 +373,6 @@ export default function App() {
     ]);
   }, []);
 
-  // Commit state locally and broadcast over RoomTransport if in online room
   const commitGameState = useCallback(
     (next: AuthoritativeGameState, broadcast = true) => {
       setGameState(next);
@@ -279,7 +387,7 @@ export default function App() {
     [roomCode]
   );
 
-  // Connect RoomTransport whenever roomCode is active in Friend mode
+  // RoomTransport lifecycle
   useEffect(() => {
     if (arenaMode !== 'friend' || !roomCode) {
       transportRef.current?.destroy();
@@ -292,14 +400,48 @@ export default function App() {
         setNetworkMode(mode);
         if (detail) setNetworkDetail(detail);
         if (!isHost && (mode === 'p2p' || mode === 'local-tab' || mode === 'relay')) {
-          transport.send({
-            type: 'hello',
-            peerClientId: clientIdRef.current,
-            name: localDisplayNameRef.current,
-          });
+          if (inviteJoinedRef.current) {
+            transport.send({
+              type: 'hello',
+              peerClientId: clientIdRef.current,
+              name: localDisplayNameRef.current,
+            });
+          } else {
+            transport.send({
+              type: 'invite_preview_request',
+              peerClientId: clientIdRef.current,
+            });
+          }
         }
       },
       onMessage: (msg: RoomWireMessage) => {
+        if (msg.type === 'invite_preview_request') {
+          if (isHost) {
+            const cur = gameStateRef.current;
+            transport.send({
+              type: 'invite_preview',
+              hostName: localDisplayNameRef.current,
+              hostColor: localColorRef.current,
+              variant: cur.variant,
+              timeControlLabel: cur.timeControlLabel,
+            });
+          }
+          return;
+        }
+
+        if (msg.type === 'invite_preview') {
+          if (!isHost) {
+            setInvitePreview({
+              hostName: msg.hostName,
+              hostColor: msg.hostColor,
+              variant: msg.variant,
+              timeControlLabel: msg.timeControlLabel,
+            });
+            setOpponentName(msg.hostName);
+          }
+          return;
+        }
+
         if (msg.type === 'hello') {
           setOpponentName(msg.name);
           if (isHost) {
@@ -314,6 +456,8 @@ export default function App() {
                   }
                 : current;
             setGameState(activated);
+            setInviteJoined(true);
+            setChallengedFriendName(null);
             transport.send({
               type: 'room_init',
               hostName: localDisplayNameRef.current,
@@ -321,7 +465,7 @@ export default function App() {
               state: activated,
               cursesForOpponent: cursesSentRef.current,
             });
-            pushSystemChat(`${msg.name} connected.`);
+            pushSystemChat(`${msg.name} opened the link and joined.`);
           }
           return;
         }
@@ -334,6 +478,7 @@ export default function App() {
             setBoardOrientation(assigned);
             setGameState(msg.state);
             setCursesReceived(msg.cursesForOpponent);
+            setInviteJoined(true);
             pushSystemChat(`Connected to ${msg.hostName}.`);
           }
           return;
@@ -348,7 +493,6 @@ export default function App() {
             }
             return prev;
           });
-          // Clear one-shot butterfingers after opponent completes a move
           setCursesReceived((prev) =>
             prev.butterfingers ? { ...prev, butterfingers: false } : prev
           );
@@ -413,15 +557,14 @@ export default function App() {
     };
   }, [arenaMode, roomCode, isHost, pushSystemChat]);
 
-  // Countdown clock loop (ticks every 100ms when active & timed)
+  // Countdown clock loop
   useEffect(() => {
-    const preset = TIME_CONTROLS.find((t) => t.id === gameState.timeControlId);
-    if (!preset || preset.baseMs === 0) return;
+    if (gameState.baseMs === 0) return;
     if (gameState.status !== 'active' || gameState.moves.length === 0) return;
 
     const timer = window.setInterval(() => {
       setGameState((prev) => {
-        if (prev.status !== 'active' || prev.moves.length === 0) return prev;
+        if (prev.status !== 'active' || prev.moves.length === 0 || prev.baseMs === 0) return prev;
         const turn = getTurnFromFen(prev.fen);
         if (prev.frozenColor === turn) return prev;
 
@@ -459,7 +602,7 @@ export default function App() {
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [gameState.status, gameState.timeControlId, gameState.moves.length, roomCode]);
+  }, [gameState.status, gameState.baseMs, gameState.moves.length, roomCode]);
 
   // Expire fake reconnect banner automatically
   useEffect(() => {
@@ -485,13 +628,61 @@ export default function App() {
     const timer = window.setTimeout(() => {
       const current = gameStateRef.current;
       if (current.status !== 'active') return;
-      const move = findBestMove(current.fen, 3);
-      if (!move) return;
-      const applied = applyStandardMove(current.fen, move.from, move.to, move.promotion ?? 'q');
-      if (!applied) return;
-      const outcome = getOutcomeFromFen(applied.fenAfter);
-      const preset = TIME_CONTROLS.find((t) => t.id === current.timeControlId);
-      const inc = preset?.incMs ?? 0;
+
+      let chosen = findBestMove(current.fen, 3);
+      let applied = chosen
+        ? applyStandardMove(
+            current.fen,
+            chosen.from,
+            chosen.to,
+            chosen.promotion ?? 'q',
+            false,
+            current.variant
+          )
+        : null;
+
+      // Fallback for Atomic if best move blew up bot's own king
+      if (!applied) {
+        const map = getBoardMap(current.fen);
+        const pieces = Object.values(map).filter((p) => p.color === turn);
+        for (const p of pieces) {
+          const targets = getLegalMovesFromSquare(current.fen, p.square, current.variant);
+          for (const target of targets) {
+            const attempt = applyStandardMove(
+              current.fen,
+              p.square,
+              target,
+              'q',
+              false,
+              current.variant
+            );
+            if (attempt) {
+              chosen = { from: p.square, to: target, san: attempt.san, evalCp: 0 };
+              applied = attempt;
+              break;
+            }
+          }
+          if (applied) break;
+        }
+      }
+
+      if (!chosen || !applied) return;
+
+      const nextWChecks =
+        current.variant === 'three_check' && turn === 'w' && applied.deliveredCheck
+          ? current.whiteChecks + 1
+          : current.whiteChecks;
+      const nextBChecks =
+        current.variant === 'three_check' && turn === 'b' && applied.deliveredCheck
+          ? current.blackChecks + 1
+          : current.blackChecks;
+
+      const outcome = getOutcomeFromFen(
+        applied.fenAfter,
+        current.variant,
+        nextWChecks,
+        nextBChecks
+      );
 
       setGameState({
         ...current,
@@ -502,16 +693,18 @@ export default function App() {
           {
             ply: current.moves.length + 1,
             san: applied.san,
-            from: move.from,
-            to: move.to,
+            from: chosen.from,
+            to: chosen.to,
             color: turn,
             fenBefore: current.fen,
             fenAfter: applied.fenAfter,
           },
         ],
-        lastMove: { from: move.from, to: move.to },
-        whiteMs: turn === 'w' && inc ? current.whiteMs + inc : current.whiteMs,
-        blackMs: turn === 'b' && inc ? current.blackMs + inc : current.blackMs,
+        lastMove: { from: chosen.from, to: chosen.to },
+        whiteMs: turn === 'w' && current.incMs ? current.whiteMs + current.incMs : current.whiteMs,
+        blackMs: turn === 'b' && current.incMs ? current.blackMs + current.incMs : current.blackMs,
+        whiteChecks: nextWChecks,
+        blackChecks: nextBChecks,
         status: outcome.status,
         winner: outcome.winner,
         statusReason: outcome.reason,
@@ -558,13 +751,20 @@ export default function App() {
     fenAfter: string,
     san: string,
     movedColor: PieceColor,
+    deliveredCheck: boolean,
     isTrollMove = false
   ) {
-    const outcome = getOutcomeFromFen(fenAfter);
-    const preset = TIME_CONTROLS.find((t) => t.id === gameState.timeControlId);
-    const inc = preset?.incMs ?? 0;
+    const nextWChecks =
+      gameState.variant === 'three_check' && movedColor === 'w' && deliveredCheck
+        ? gameState.whiteChecks + 1
+        : gameState.whiteChecks;
+    const nextBChecks =
+      gameState.variant === 'three_check' && movedColor === 'b' && deliveredCheck
+        ? gameState.blackChecks + 1
+        : gameState.blackChecks;
 
-    // If a disguised piece moved, remove disguise at source square
+    const outcome = getOutcomeFromFen(fenAfter, gameState.variant, nextWChecks, nextBChecks);
+
     if (cursesSent.disguisedSquares[from]) {
       const nextDisguises = { ...cursesSent.disguisedSquares };
       delete nextDisguises[from];
@@ -589,8 +789,16 @@ export default function App() {
         },
       ],
       lastMove: { from, to },
-      whiteMs: !isTrollMove && movedColor === 'w' && inc ? gameState.whiteMs + inc : gameState.whiteMs,
-      blackMs: !isTrollMove && movedColor === 'b' && inc ? gameState.blackMs + inc : gameState.blackMs,
+      whiteMs:
+        !isTrollMove && movedColor === 'w' && gameState.incMs
+          ? gameState.whiteMs + gameState.incMs
+          : gameState.whiteMs,
+      blackMs:
+        !isTrollMove && movedColor === 'b' && gameState.incMs
+          ? gameState.blackMs + gameState.incMs
+          : gameState.blackMs,
+      whiteChecks: nextWChecks,
+      blackChecks: nextBChecks,
       status: outcome.status,
       winner: outcome.winner,
       statusReason: outcome.reason,
@@ -608,7 +816,7 @@ export default function App() {
       const res = applyTrollMovePiece(gameState.fen, from, to, false);
       if (res) {
         setArmedTroll(null);
-        applyMoveSuccess(from, to, res.fenAfter, res.san, turn, true);
+        applyMoveSuccess(from, to, res.fenAfter, res.san, turn, res.deliveredCheck, true);
       }
       return;
     }
@@ -618,7 +826,7 @@ export default function App() {
         ? turn === localColor
         : roomCode
           ? turn === localColor
-          : true; // Sandbox practice when no room is open yet
+          : true;
 
     if (!canPlayLocal) return;
 
@@ -629,20 +837,20 @@ export default function App() {
       return;
     }
 
-    const res = applyStandardMove(gameState.fen, from, to, 'q', keepTurn);
+    const res = applyStandardMove(gameState.fen, from, to, 'q', keepTurn, gameState.variant);
     if (!res) return;
     if (keepTurn) setArmedTroll(null);
-    applyMoveSuccess(from, to, res.fenAfter, res.san, turn, keepTurn);
+    applyMoveSuccess(from, to, res.fenAfter, res.san, turn, res.deliveredCheck, keepTurn);
   }
 
   function handleSelectPromotion(piece: Exclude<PieceType, 'p' | 'k'>) {
     if (!pendingPromotion) return;
     const { from, to, color, keepTurn } = pendingPromotion;
     setPendingPromotion(null);
-    const res = applyStandardMove(gameState.fen, from, to, piece, keepTurn);
+    const res = applyStandardMove(gameState.fen, from, to, piece, keepTurn, gameState.variant);
     if (!res) return;
     if (keepTurn) setArmedTroll(null);
-    applyMoveSuccess(from, to, res.fenAfter, res.san, color, keepTurn);
+    applyMoveSuccess(from, to, res.fenAfter, res.san, color, res.deliveredCheck, keepTurn);
   }
 
   function handleTrollSquareClick(sq: string) {
@@ -653,7 +861,7 @@ export default function App() {
       const res = applyTransformPiece(gameState.fen, sq, localColor, armedTroll.targetPiece);
       if (!res) return;
       setArmedTroll(null);
-      applyMoveSuccess(sq, sq, res.fenAfter, res.san, localColor, true);
+      applyMoveSuccess(sq, sq, res.fenAfter, res.san, localColor, false, true);
       return;
     }
 
@@ -661,7 +869,7 @@ export default function App() {
       const res = applyResurrectPiece(gameState.fen, sq, localColor, armedTroll.targetPiece);
       if (!res) return;
       setArmedTroll(null);
-      applyMoveSuccess(sq, sq, res.fenAfter, res.san, localColor, true);
+      applyMoveSuccess(sq, sq, res.fenAfter, res.san, localColor, false, true);
       return;
     }
 
@@ -693,32 +901,50 @@ export default function App() {
     }
   }
 
-  // Create online room
-  function handleCreateRoom() {
+  function startHostedRoom(opts: {
+    variant: GameVariant;
+    timeControlId: string;
+    timeControlLabel: string;
+    baseMs: number;
+    incMs: number;
+    preferred: 'random' | PieceColor;
+    friendLabel?: string;
+  }) {
     const code = generateRoomCode();
     const chosenColor: PieceColor =
-      preferredColor === 'random'
-        ? Math.random() > 0.5
-          ? 'w'
-          : 'b'
-        : preferredColor;
+      opts.preferred === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : opts.preferred;
 
     setArenaMode('friend');
     setIsHost(true);
+    setInviteJoined(false);
+    setInvitePreview(null);
+    setChallengedFriendName(opts.friendLabel ?? null);
     setRoomCode(code);
     setLocalColor(chosenColor);
     setBoardOrientation(chosenColor);
-    setOpponentName('Waiting for friend…');
+    setOpponentName(opts.friendLabel ? `@${opts.friendLabel}` : 'Waiting for friend…');
     setNetworkMode('connecting');
-    setNetworkDetail('Share the invite link to start');
-    setGameState(createInitialGameState(selectedTimeControl, 'waiting'));
+    setNetworkDetail('Waiting for friend to open the link');
+    setDrawOfferedBy(null);
+    setRematchRequested(false);
+    setPendingPromotion(null);
+    setGameState(
+      createInitialGameState({
+        variant: opts.variant,
+        timeControlId: opts.timeControlId,
+        timeControlLabel: opts.timeControlLabel,
+        baseMs: opts.baseMs,
+        incMs: opts.incMs,
+        status: 'waiting',
+      })
+    );
     setCursesSent(emptyCurses());
     setCursesReceived(emptyCurses());
     setChatMessages([
       {
         id: crypto.randomUUID(),
         sender: 'Room',
-        text: `Room ${code} created. Send invite link to your friend.`,
+        text: `Invite created (${code}). Waiting for friend to open link.`,
         ts: Date.now(),
         system: true,
       },
@@ -727,6 +953,90 @@ export default function App() {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set('room', code);
     window.history.replaceState({}, '', nextUrl.toString());
+    return { code, chosenColor };
+  }
+
+  function handleCreateRoom() {
+    startHostedRoom({
+      variant: selectedVariant,
+      timeControlId: activeTimeConfig.id,
+      timeControlLabel: activeTimeConfig.label,
+      baseMs: activeTimeConfig.baseMs,
+      incMs: activeTimeConfig.incMs,
+      preferred: preferredColor,
+    });
+  }
+
+  async function handleLaunchFriendChallenge(input: {
+    friend: FriendSummary;
+    variant: GameVariant;
+    timeControlId: string;
+    timeControlLabel: string;
+    baseMs: number;
+    incMs: number;
+    preferredColor: 'random' | PieceColor;
+  }) {
+    const { code, chosenColor } = startHostedRoom({
+      variant: input.variant,
+      timeControlId: input.timeControlId,
+      timeControlLabel: input.timeControlLabel,
+      baseMs: input.baseMs,
+      incMs: input.incMs,
+      preferred: input.preferredColor,
+      friendLabel: input.friend.username,
+    });
+
+    await sendDirectChallenge({
+      toUserId: input.friend.id,
+      roomCode: code,
+      variant: input.variant,
+      timeControlId: input.timeControlId,
+      timeControlLabel: input.timeControlLabel,
+      baseMs: input.baseMs,
+      incMs: input.incMs,
+      hostColor: chosenColor,
+    });
+    await refreshSocial();
+  }
+
+  async function handleAcceptDirectChallenge(challenge: DirectChallengeSummary) {
+    try {
+      await respondDirectChallenge(challenge.id, 'accept');
+    } catch {
+      // Proceed to room either way
+    }
+    const assignedColor: PieceColor = challenge.hostColor === 'w' ? 'b' : 'w';
+    setArenaMode('friend');
+    setIsHost(false);
+    setInviteJoined(true);
+    setInvitePreview(null);
+    setChallengedFriendName(null);
+    setRoomCode(challenge.roomCode);
+    setLocalColor(assignedColor);
+    setBoardOrientation(assignedColor);
+    setOpponentName(`@${challenge.fromUsername}`);
+    setNetworkMode('connecting');
+    setNetworkDetail(`Connecting to @${challenge.fromUsername}…`);
+    setDrawOfferedBy(null);
+    setRematchRequested(false);
+    setPendingPromotion(null);
+    setGameState(
+      createInitialGameState({
+        variant: challenge.variant,
+        timeControlId: challenge.timeControlId,
+        timeControlLabel: challenge.timeControlLabel,
+        baseMs: challenge.baseMs,
+        incMs: challenge.incMs,
+        status: 'waiting',
+      })
+    );
+    setCursesSent(emptyCurses());
+    setCursesReceived(emptyCurses());
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('room', challenge.roomCode);
+    window.history.replaceState({}, '', nextUrl.toString());
+    void refreshSocial();
   }
 
   function handleJoinRoom(e: FormEvent) {
@@ -745,11 +1055,23 @@ export default function App() {
 
     setArenaMode('friend');
     setIsHost(false);
+    setInviteJoined(false);
+    setInvitePreview(null);
+    setChallengedFriendName(null);
     setRoomCode(clean);
     setOpponentName('Connecting…');
     setNetworkMode('connecting');
-    setNetworkDetail(`Connecting to room ${clean}…`);
-    setGameState(createInitialGameState(selectedTimeControl, 'waiting'));
+    setNetworkDetail(`Inspecting invite ${clean}…`);
+    setGameState(
+      createInitialGameState({
+        variant: selectedVariant,
+        timeControlId: activeTimeConfig.id,
+        timeControlLabel: activeTimeConfig.label,
+        baseMs: activeTimeConfig.baseMs,
+        incMs: activeTimeConfig.incMs,
+        status: 'waiting',
+      })
+    );
     setCursesSent(emptyCurses());
     setCursesReceived(emptyCurses());
     setJoinInput('');
@@ -759,11 +1081,27 @@ export default function App() {
     window.history.replaceState({}, '', nextUrl.toString());
   }
 
+  function handleAcceptInviteGate() {
+    if (!roomCode || !transportRef.current) {
+      setInviteJoined(true);
+      return;
+    }
+    setInviteJoined(true);
+    transportRef.current.send({
+      type: 'hello',
+      peerClientId: clientIdRef.current,
+      name: localDisplayName,
+    });
+  }
+
   function handleLeaveRoom() {
     transportRef.current?.destroy();
     transportRef.current = null;
     setRoomCode(null);
     setIsHost(true);
+    setInviteJoined(false);
+    setInvitePreview(null);
+    setChallengedFriendName(null);
     setNetworkMode('idle');
     setNetworkDetail('Ready to create or join a room');
     setOpponentName('Practice Board');
@@ -772,7 +1110,16 @@ export default function App() {
     setDrawOfferedBy(null);
     setRematchRequested(false);
     setPendingPromotion(null);
-    setGameState(createInitialGameState(selectedTimeControl, 'active'));
+    setGameState(
+      createInitialGameState({
+        variant: selectedVariant,
+        timeControlId: activeTimeConfig.id,
+        timeControlLabel: activeTimeConfig.label,
+        baseMs: activeTimeConfig.baseMs,
+        incMs: activeTimeConfig.incMs,
+        status: 'active',
+      })
+    );
     setCursesSent(emptyCurses());
     setCursesReceived(emptyCurses());
     setChatMessages([]);
@@ -786,6 +1133,9 @@ export default function App() {
     transportRef.current = null;
     setArenaMode('bot');
     setRoomCode(null);
+    setInviteJoined(false);
+    setInvitePreview(null);
+    setChallengedFriendName(null);
     setNetworkMode('idle');
     setOpponentName('Vesper Engine (Depth 3)');
     setLocalColor(colorChoice);
@@ -793,7 +1143,16 @@ export default function App() {
     setDrawOfferedBy(null);
     setRematchRequested(false);
     setPendingPromotion(null);
-    setGameState(createInitialGameState(selectedTimeControl, 'active'));
+    setGameState(
+      createInitialGameState({
+        variant: selectedVariant,
+        timeControlId: activeTimeConfig.id,
+        timeControlLabel: activeTimeConfig.label,
+        baseMs: activeTimeConfig.baseMs,
+        incMs: activeTimeConfig.incMs,
+        status: 'active',
+      })
+    );
     setCursesSent(emptyCurses());
     setCursesReceived(emptyCurses());
     const nextUrl = new URL(window.location.href);
@@ -849,7 +1208,16 @@ export default function App() {
       return;
     }
     if (!roomCode) {
-      setGameState(createInitialGameState(selectedTimeControl, 'active'));
+      setGameState(
+        createInitialGameState({
+          variant: selectedVariant,
+          timeControlId: activeTimeConfig.id,
+          timeControlLabel: activeTimeConfig.label,
+          baseMs: activeTimeConfig.baseMs,
+          incMs: activeTimeConfig.incMs,
+          status: 'active',
+        })
+      );
       return;
     }
     if (rematchRequested && transportRef.current) {
@@ -858,7 +1226,14 @@ export default function App() {
           ? 'b'
           : 'w'
         : localColor;
-      const fresh = createInitialGameState(gameState.timeControlId, 'active');
+      const fresh = createInitialGameState({
+        variant: gameState.variant,
+        timeControlId: gameState.timeControlId,
+        timeControlLabel: gameState.timeControlLabel,
+        baseMs: gameState.baseMs,
+        incMs: gameState.incMs,
+        status: 'active',
+      });
       setLocalColor(isHost ? newHostColor : newHostColor === 'w' ? 'b' : 'w');
       setBoardOrientation(isHost ? newHostColor : newHostColor === 'w' ? 'b' : 'w');
       setGameState(fresh);
@@ -891,7 +1266,6 @@ export default function App() {
     transportRef.current?.send({ type: 'chat', message: msg });
   }
 
-  // Hidden triple-click trigger on brand mark (strictly active ONLY for authorized troll users)
   function handleBrandClick() {
     if (!canTroll) return;
     const now = Date.now();
@@ -973,10 +1347,19 @@ export default function App() {
 
   // Derived view metrics
   const currentTurn = getTurnFromFen(gameState.fen);
-  const outcome = getOutcomeFromFen(gameState.fen);
+  const outcome = getOutcomeFromFen(
+    gameState.fen,
+    gameState.variant,
+    gameState.whiteChecks,
+    gameState.blackChecks
+  );
   const captured = useMemo(() => getCapturedPieces(gameState.fen), [gameState.fen]);
-  const preset = TIME_CONTROLS.find((t) => t.id === gameState.timeControlId) ?? TIME_CONTROLS[3];
-  const isUntimed = preset.baseMs === 0;
+  const isUntimed = gameState.baseMs === 0;
+
+  const isWaitingAtInviteGate =
+    arenaMode === 'friend' &&
+    Boolean(roomCode) &&
+    ((isHost && gameState.status === 'waiting') || (!isHost && !inviteJoined));
 
   const topColor: PieceColor = boardOrientation === 'w' ? 'b' : 'w';
   const bottomColor: PieceColor = boardOrientation;
@@ -986,13 +1369,22 @@ export default function App() {
   const topActive = gameState.status === 'active' && currentTurn === topColor;
   const bottomActive = gameState.status === 'active' && currentTurn === bottomColor;
 
-  const topLabel = topColor === localColor ? `${localDisplayName} (${topColor === 'w' ? 'White' : 'Black'})` : `${opponentName} (${topColor === 'w' ? 'White' : 'Black'})`;
-  const bottomLabel = bottomColor === localColor ? `${localDisplayName} (${bottomColor === 'w' ? 'White' : 'Black'})` : `${opponentName} (${bottomColor === 'w' ? 'White' : 'Black'})`;
+  const topLabel =
+    topColor === localColor
+      ? `${localDisplayName} (${topColor === 'w' ? 'White' : 'Black'})`
+      : `${opponentName} (${topColor === 'w' ? 'White' : 'Black'})`;
+  const bottomLabel =
+    bottomColor === localColor
+      ? `${localDisplayName} (${bottomColor === 'w' ? 'White' : 'Black'})`
+      : `${opponentName} (${bottomColor === 'w' ? 'White' : 'Black'})`;
 
   const topCaptured = topColor === 'w' ? captured.whiteCaptured : captured.blackCaptured;
   const bottomCaptured = bottomColor === 'w' ? captured.whiteCaptured : captured.blackCaptured;
   const topAdv = topColor === 'w' ? captured.whiteAdvantage : -captured.whiteAdvantage;
   const bottomAdv = bottomColor === 'w' ? captured.whiteAdvantage : -captured.whiteAdvantage;
+
+  const topChecks = topColor === 'w' ? gameState.whiteChecks : gameState.blackChecks;
+  const bottomChecks = bottomColor === 'w' ? gameState.whiteChecks : gameState.blackChecks;
 
   const movePairs = useMemo(() => {
     const pairs: Array<{ num: number; white?: string; black?: string; activePly: number }> = [];
@@ -1024,6 +1416,18 @@ export default function App() {
   const lastMoveText = gameState.lastMove
     ? `${gameState.lastMove.from}→${gameState.lastMove.to}`
     : 'startpos';
+
+  const activeVariantLabel =
+    GAME_VARIANTS.find((v) => v.id === gameState.variant)?.label || 'Standard';
+
+  const socialUnread = social.incomingRequests.length + social.incomingChallenges.length;
+
+  const visibleTimerPresets = TIME_CONTROLS.filter((t) => {
+    if (timerCategory === 'Bullet') return t.category === 'Bullet';
+    if (timerCategory === 'Blitz') return t.category === 'Blitz';
+    if (timerCategory === 'Rapid') return t.category === 'Rapid' || t.category === 'Untimed';
+    return false;
+  });
 
   return (
     <div className="app-shell">
@@ -1060,6 +1464,15 @@ export default function App() {
               <BotIcon size={14} />
               <span>Play Bot</span>
             </button>
+            <button
+              type="button"
+              className={`nav-tab ${friendsModalOpen ? 'is-active' : ''}`}
+              onClick={() => setFriendsModalOpen(true)}
+            >
+              <UsersIcon size={14} />
+              <span>Friends</span>
+              {socialUnread > 0 && <span className="nav-count">{socialUnread}</span>}
+            </button>
           </nav>
         </div>
 
@@ -1076,7 +1489,7 @@ export default function App() {
               />
               <span className="mono-val">ROOM {roomCode}</span>
               <span className="room-divider" aria-hidden="true" />
-              <span className="mono-muted">{preset.label}</span>
+              <span className="mono-muted">{gameState.timeControlLabel}</span>
               <button
                 type="button"
                 className="copy-inline-btn"
@@ -1102,11 +1515,16 @@ export default function App() {
 
       <main className={`arena-grid ${canTroll && drawerOpen ? 'has-operator' : ''}`}>
         <aside className={`telemetry-rail ${arenaMode === 'friend' && !roomCode ? 'is-idle' : ''}`}>
-          {/* Top / Opponent Clock Specimen */}
           <section className={`clock-specimen clock-top ${topActive ? 'is-active' : ''} ${!isUntimed && topMs < 20_000 ? 'is-urgent' : ''}`}>
             <div className="clock-meta">
               <span className="player-name">{topLabel}</span>
-              <span className="turn-tag">{topActive ? 'Active' : 'Standby'}</span>
+              <span className="turn-tag">
+                {gameState.variant === 'three_check'
+                  ? `Checks ${topChecks}/3 · ${topActive ? 'Active' : 'Standby'}`
+                  : topActive
+                    ? 'Active'
+                    : 'Standby'}
+              </span>
             </div>
             <div className="clock-axis" aria-hidden="true">
               <span className="clock-axis-dot" />
@@ -1124,32 +1542,116 @@ export default function App() {
             </div>
           </section>
 
-          {/* Center Ledger or Room Setup */}
           <section className="rail-center">
             {arenaMode === 'friend' && !roomCode ? (
               <div className="room-setup">
                 <h1>Online Match Room</h1>
                 <p className="muted-copy">
-                  Create a direct link for your friend. No account required to play.
+                  Share an invite link. The board loads once your friend opens it.
                 </p>
 
                 <div className="control-group">
+                  <label className="field-label" htmlFor="lobby-variant-select">
+                    Game mode
+                  </label>
+                  <select
+                    id="lobby-variant-select"
+                    className="select-input"
+                    value={selectedVariant}
+                    onChange={(e) => {
+                      const v = e.target.value as GameVariant;
+                      setSelectedVariant(v);
+                      setGameState(
+                        createInitialGameState({
+                          variant: v,
+                          timeControlId: activeTimeConfig.id,
+                          timeControlLabel: activeTimeConfig.label,
+                          baseMs: activeTimeConfig.baseMs,
+                          incMs: activeTimeConfig.incMs,
+                          status: 'active',
+                        })
+                      );
+                    }}
+                  >
+                    {GAME_VARIANTS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label} — {v.shortDesc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="control-group">
                   <span className="field-label">Time control</span>
-                  <div className="preset-grid">
-                    {TIME_CONTROLS.map((tc) => (
+                  <div className="segmented-tabs">
+                    {(['Bullet', 'Blitz', 'Rapid', 'Custom'] as const).map((cat) => (
                       <button
-                        key={tc.id}
+                        key={cat}
                         type="button"
-                        className={`preset-btn ${selectedTimeControl === tc.id ? 'is-selected' : ''}`}
+                        className={`seg-tab ${timerCategory === cat ? 'is-active' : ''}`}
                         onClick={() => {
-                          setSelectedTimeControl(tc.id);
-                          setGameState(createInitialGameState(tc.id, 'active'));
+                          setTimerCategory(cat);
+                          if (cat === 'Bullet') setSelectedTimeControl('1+0');
+                          if (cat === 'Blitz') setSelectedTimeControl('5+0');
+                          if (cat === 'Rapid') setSelectedTimeControl('10+0');
                         }}
                       >
-                        {tc.label}
+                        {cat}
                       </button>
                     ))}
                   </div>
+
+                  {timerCategory === 'Custom' ? (
+                    <div className="custom-timer-row">
+                      <label className="custom-timer-field">
+                        <span>Min</span>
+                        <input
+                          type="number"
+                          className="text-input"
+                          min={1}
+                          max={180}
+                          value={customMinutes}
+                          onChange={(e) => setCustomMinutes(Number(e.target.value) || 5)}
+                        />
+                      </label>
+                      <label className="custom-timer-field">
+                        <span>Inc (s)</span>
+                        <input
+                          type="number"
+                          className="text-input"
+                          min={0}
+                          max={60}
+                          value={customIncrement}
+                          onChange={(e) => setCustomIncrement(Number(e.target.value) || 0)}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="preset-grid timer-subgrid">
+                      {visibleTimerPresets.map((tc) => (
+                        <button
+                          key={tc.id}
+                          type="button"
+                          className={`preset-btn ${selectedTimeControl === tc.id ? 'is-selected' : ''}`}
+                          onClick={() => {
+                            setSelectedTimeControl(tc.id);
+                            setGameState(
+                              createInitialGameState({
+                                variant: selectedVariant,
+                                timeControlId: tc.id,
+                                timeControlLabel: tc.label,
+                                baseMs: tc.baseMs,
+                                incMs: tc.incMs,
+                                status: 'active',
+                              })
+                            );
+                          }}
+                        >
+                          {tc.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="control-group">
@@ -1221,8 +1723,8 @@ export default function App() {
                 </div>
 
                 <div className="telemetry-strip">
-                  <span>PLY {String(gameState.moves.length).padStart(2, '0')}</span>
-                  <span>{lastMoveText}</span>
+                  <span>{activeVariantLabel}</span>
+                  <span>PLY {String(gameState.moves.length).padStart(2, '0')} · {lastMoveText}</span>
                   <span>{roomCode ? networkDetail.split(' ')[0] : 'Local AI'}</span>
                 </div>
 
@@ -1230,8 +1732,8 @@ export default function App() {
                   <div className="moves-scroll">
                     {movePairs.length === 0 ? (
                       <div className="empty-ledger">
-                        {gameState.status === 'waiting'
-                          ? 'Share the room URL above. Play begins as soon as your friend connects.'
+                        {isWaitingAtInviteGate
+                          ? 'Board will load as soon as your friend opens the invite link.'
                           : 'Make the opening move on the board.'}
                       </div>
                     ) : (
@@ -1273,11 +1775,16 @@ export default function App() {
             )}
           </section>
 
-          {/* Bottom / Local Clock Specimen */}
           <section className={`clock-specimen clock-bottom ${bottomActive ? 'is-active' : ''} ${!isUntimed && bottomMs < 20_000 ? 'is-urgent' : ''}`}>
             <div className="clock-meta">
               <span className="player-name">{bottomLabel}</span>
-              <span className="turn-tag">{bottomActive ? 'Your turn' : 'Standby'}</span>
+              <span className="turn-tag">
+                {gameState.variant === 'three_check'
+                  ? `Checks ${bottomChecks}/3 · ${bottomActive ? 'Your turn' : 'Standby'}`
+                  : bottomActive
+                    ? 'Your turn'
+                    : 'Standby'}
+              </span>
             </div>
             <div className="clock-axis" aria-hidden="true">
               <span className="clock-axis-dot" />
@@ -1298,118 +1805,267 @@ export default function App() {
 
         <section className="board-stage">
           <div className="stage-inner">
-            {(gameState.statusReason || drawOfferedBy || (!canTroll && cursesReceived.arbiterNotice)) && (
+            {social.incomingChallenges.length > 0 && (
               <div className="match-banner" role="status">
                 <span>
-                  {gameState.statusReason ||
-                    (drawOfferedBy && drawOfferedBy !== localColor
-                      ? 'Opponent offered a draw'
-                      : drawOfferedBy === localColor
-                        ? 'Draw offer sent'
-                        : cursesReceived.arbiterNotice)}
+                  Challenge from <strong>@{social.incomingChallenges[0].fromUsername}</strong> ·{' '}
+                  {GAME_VARIANTS.find((v) => v.id === social.incomingChallenges[0].variant)?.label || 'Standard'} ·{' '}
+                  {social.incomingChallenges[0].timeControlLabel}
                 </span>
-                {drawOfferedBy && drawOfferedBy !== localColor && gameState.status === 'active' && (
-                  <div className="banner-actions">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-xs"
-                      onClick={handleOfferOrAcceptDraw}
-                    >
-                      Accept Draw
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs"
-                      onClick={() => {
-                        setDrawOfferedBy(null);
-                        transportRef.current?.send({ type: 'draw_response', accepted: false });
-                      }}
-                    >
-                      Decline
-                    </button>
-                  </div>
-                )}
+                <div className="banner-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-xs"
+                    onClick={() => void handleAcceptDirectChallenge(social.incomingChallenges[0])}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs"
+                    onClick={() =>
+                      void respondDirectChallenge(social.incomingChallenges[0].id, 'decline').then(
+                        refreshSocial
+                      )
+                    }
+                  >
+                    Decline
+                  </button>
+                </div>
               </div>
             )}
 
-            <ChessBoard
-              fen={gameState.fen}
-              orientation={boardOrientation}
-              playerColor={
-                arenaMode === 'friend' && !roomCode ? currentTurn : localColor
-              }
-              turnColor={currentTurn}
-              canInteract={canPlayInteract}
-              isGameOver={gameState.status !== 'active' && gameState.status !== 'waiting'}
-              inCheckColor={outcome.inCheckColor}
-              lastMove={gameState.lastMove}
-              pendingPromotion={pendingPromotion}
-              hintArrow={
-                canTroll && showEngineHint && engineHint
-                  ? { from: engineHint.from, to: engineHint.to }
-                  : null
-              }
-              armedTroll={armedTroll}
-              canTroll={canTroll}
-              cursesReceived={cursesReceived}
-              onAttemptMove={handleAttemptMove}
-              onSelectPromotion={handleSelectPromotion}
-              onCancelPromotion={() => setPendingPromotion(null)}
-              onTrollSquareClick={handleTrollSquareClick}
-            />
+            {isWaitingAtInviteGate ? (
+              <div className="invite-gate-panel">
+                <div className="invite-gate-head">
+                  <h2>
+                    {isHost
+                      ? challengedFriendName
+                        ? `Waiting for @${challengedFriendName}`
+                        : 'Invite a friend to play'
+                      : invitePreview
+                        ? `${invitePreview.hostName} challenged you`
+                        : 'Join invited chess match'}
+                  </h2>
+                  <p className="muted-copy">
+                    {isHost
+                      ? 'The board stays closed until your friend opens the link and joins.'
+                      : 'Review the match rules below and click Join Match to load the board.'}
+                  </p>
+                </div>
 
-            <div className="board-actions-bar">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setBoardOrientation((o) => (o === 'w' ? 'b' : 'w'))}
-              >
-                <FlipIcon size={15} />
-                <span>Flip Board</span>
-              </button>
+                <div className="invite-spec-grid">
+                  <div className="invite-spec-cell">
+                    <span className="spec-label">Mode</span>
+                    <strong className="mono-val">
+                      {GAME_VARIANTS.find(
+                        (v) => v.id === (isHost ? gameState.variant : invitePreview?.variant ?? gameState.variant)
+                      )?.label || 'Standard'}
+                    </strong>
+                  </div>
+                  <div className="invite-spec-cell">
+                    <span className="spec-label">Timer</span>
+                    <strong className="mono-val">
+                      {isHost ? gameState.timeControlLabel : invitePreview?.timeControlLabel ?? gameState.timeControlLabel}
+                    </strong>
+                  </div>
+                  <div className="invite-spec-cell">
+                    <span className="spec-label">Your Color</span>
+                    <strong className="mono-val">
+                      {isHost
+                        ? localColor === 'w'
+                          ? 'White'
+                          : 'Black'
+                        : invitePreview
+                          ? invitePreview.hostColor === 'w'
+                            ? 'Black'
+                            : 'White'
+                          : 'Assigned on join'}
+                    </strong>
+                  </div>
+                </div>
 
-              {!roomCode && arenaMode === 'friend' ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setPendingPromotion(null);
-                    setGameState(createInitialGameState(selectedTimeControl, 'active'));
-                  }}
-                >
-                  <span>Reset Board</span>
-                </button>
-              ) : gameState.status === 'active' ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={handleOfferOrAcceptDraw}
-                  >
-                    <DrawIcon size={15} />
+                {isHost ? (
+                  <>
+                    <div className="invite-url-box">
+                      <span className="mono-val invite-url-text">
+                        {`${window.location.origin}/?room=${roomCode}`}
+                      </span>
+                      <button type="button" className="btn btn-primary btn-sm" onClick={handleCopyInvite}>
+                        {copySuccess ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+                        <span>{copySuccess ? 'Copied' : 'Copy Invite Link'}</span>
+                      </button>
+                    </div>
+                    <div className="invite-status-row">
+                      <span className="spinner-ring" aria-hidden="true" />
+                      <span className="muted-copy">
+                        {challengedFriendName
+                          ? `Direct challenge sent to @${challengedFriendName} — waiting for acceptance or link open…`
+                          : 'Waiting for your friend to open the link…'}
+                      </span>
+                    </div>
+                    <div className="invite-gate-actions">
+                      <button type="button" className="btn btn-secondary" onClick={handleLeaveRoom}>
+                        Cancel Invite
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {!user && (
+                      <div className="control-group">
+                        <label className="field-label" htmlFor="gate-guest-name">
+                          Display name (no account needed)
+                        </label>
+                        <input
+                          id="gate-guest-name"
+                          type="text"
+                          className="text-input"
+                          maxLength={24}
+                          value={guestName}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setGuestName(val);
+                            try {
+                              localStorage.setItem(GUEST_STORAGE_KEY, val);
+                            } catch {
+                              // Ignore
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="invite-gate-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleAcceptInviteGate}
+                      >
+                        Join Match &amp; Load Board
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={handleLeaveRoom}>
+                        Decline
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                {(gameState.statusReason || drawOfferedBy || (!canTroll && cursesReceived.arbiterNotice)) && (
+                  <div className="match-banner" role="status">
                     <span>
-                      {drawOfferedBy && drawOfferedBy !== localColor ? 'Accept Draw' : 'Offer Draw'}
+                      {gameState.statusReason ||
+                        (drawOfferedBy && drawOfferedBy !== localColor
+                          ? 'Opponent offered a draw'
+                          : drawOfferedBy === localColor
+                            ? 'Draw offer sent'
+                            : cursesReceived.arbiterNotice)}
                     </span>
-                  </button>
+                    {drawOfferedBy && drawOfferedBy !== localColor && gameState.status === 'active' && (
+                      <div className="banner-actions">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-xs"
+                          onClick={handleOfferOrAcceptDraw}
+                        >
+                          Accept Draw
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => {
+                            setDrawOfferedBy(null);
+                            transportRef.current?.send({ type: 'draw_response', accepted: false });
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <ChessBoard
+                  fen={gameState.fen}
+                  variant={gameState.variant}
+                  orientation={boardOrientation}
+                  playerColor={arenaMode === 'friend' && !roomCode ? currentTurn : localColor}
+                  turnColor={currentTurn}
+                  canInteract={canPlayInteract}
+                  isGameOver={gameState.status !== 'active' && gameState.status !== 'waiting'}
+                  inCheckColor={outcome.inCheckColor}
+                  lastMove={gameState.lastMove}
+                  pendingPromotion={pendingPromotion}
+                  hintArrow={
+                    canTroll && showEngineHint && engineHint
+                      ? { from: engineHint.from, to: engineHint.to }
+                      : null
+                  }
+                  armedTroll={armedTroll}
+                  canTroll={canTroll}
+                  cursesReceived={cursesReceived}
+                  onAttemptMove={handleAttemptMove}
+                  onSelectPromotion={handleSelectPromotion}
+                  onCancelPromotion={() => setPendingPromotion(null)}
+                  onTrollSquareClick={handleTrollSquareClick}
+                />
+
+                <div className="board-actions-bar">
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={handleResign}
+                    onClick={() => setBoardOrientation((o) => (o === 'w' ? 'b' : 'w'))}
                   >
-                    <FlagIcon size={15} />
-                    <span>Resign</span>
+                    <FlipIcon size={15} />
+                    <span>Flip Board</span>
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleRematch}
-                >
-                  <span>{rematchRequested ? 'Accept Rematch' : 'New Match / Rematch'}</span>
-                </button>
-              )}
-            </div>
+
+                  {!roomCode && arenaMode === 'friend' ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setPendingPromotion(null);
+                        setGameState(
+                          createInitialGameState({
+                            variant: selectedVariant,
+                            timeControlId: activeTimeConfig.id,
+                            timeControlLabel: activeTimeConfig.label,
+                            baseMs: activeTimeConfig.baseMs,
+                            incMs: activeTimeConfig.incMs,
+                            status: 'active',
+                          })
+                        );
+                      }}
+                    >
+                      <span>Reset Board</span>
+                    </button>
+                  ) : gameState.status === 'active' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleOfferOrAcceptDraw}
+                      >
+                        <DrawIcon size={15} />
+                        <span>
+                          {drawOfferedBy && drawOfferedBy !== localColor ? 'Accept Draw' : 'Offer Draw'}
+                        </span>
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={handleResign}>
+                        <FlagIcon size={15} />
+                        <span>Resign</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-primary" onClick={handleRematch}>
+                      <span>{rematchRequested ? 'Accept Rematch' : 'New Match / Rematch'}</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -1422,7 +2078,9 @@ export default function App() {
             cursesSent={cursesSent}
             showEngineHint={showEngineHint}
             evalDisplay={evalDisplay}
-            hintMoveLabel={engineHint ? `${engineHint.san} (${engineHint.from}→${engineHint.to})` : null}
+            hintMoveLabel={
+              engineHint ? `${engineHint.san} (${engineHint.from}→${engineHint.to})` : null
+            }
             isMultiplayer={Boolean(roomCode && arenaMode === 'friend')}
             capturedOwnPieces={localColor === 'w' ? captured.blackCaptured : captured.whiteCaptured}
             onClose={() => setDrawerOpen(false)}
@@ -1463,7 +2121,9 @@ export default function App() {
                 gameState.fen,
                 engineHint.from,
                 engineHint.to,
-                'q'
+                'q',
+                false,
+                gameState.variant
               );
               if (applied) {
                 applyMoveSuccess(
@@ -1472,6 +2132,7 @@ export default function App() {
                   applied.fenAfter,
                   applied.san,
                   currentTurn,
+                  applied.deliveredCheck,
                   true
                 );
               }
@@ -1500,6 +2161,17 @@ export default function App() {
           if (typeof nextHasOwner === 'boolean') setHasOwner(nextHasOwner);
         }}
         onOpenOperatorDrawer={() => setDrawerOpen(true)}
+      />
+
+      <FriendsModal
+        open={friendsModalOpen}
+        user={user}
+        social={social}
+        onClose={() => setFriendsModalOpen(false)}
+        onRefreshSocial={refreshSocial}
+        onOpenAccount={() => setAccountModalOpen(true)}
+        onLaunchChallenge={handleLaunchFriendChallenge}
+        onAcceptChallenge={handleAcceptDirectChallenge}
       />
     </div>
   );

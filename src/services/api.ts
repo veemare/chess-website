@@ -1,4 +1,10 @@
-import type { PublicUser } from '../types/chess';
+import type {
+  DirectChallengeSummary,
+  GameVariant,
+  PieceColor,
+  PublicUser,
+  SocialStateResponse,
+} from '../types/chess';
 
 const TOKEN_STORAGE_KEY = 'vesper64_session_token';
 
@@ -134,4 +140,60 @@ export async function fetchRoomRelayEvents(
 ): Promise<{ events: Array<{ seq: number; senderId: string; payload: unknown }>; nextSeq: number }> {
   const params = new URLSearchParams({ code, after: String(after) });
   return apiFetch(`/room?${params.toString()}`);
+}
+
+export async function fetchSocialState(): Promise<SocialStateResponse> {
+  return apiFetch<SocialStateResponse>('/social/state');
+}
+
+export async function sendFriendRequest(
+  username: string
+): Promise<{ autoAccepted?: boolean; targetUsername?: string }> {
+  return apiFetch('/social/friend-request', {
+    method: 'POST',
+    body: JSON.stringify({ username }),
+  });
+}
+
+export async function respondFriendRequest(
+  requestId: string,
+  action: 'accept' | 'decline'
+): Promise<void> {
+  await apiFetch('/social/friend-respond', {
+    method: 'POST',
+    body: JSON.stringify({ requestId, action }),
+  });
+}
+
+export async function removeFriend(friendUserId: string): Promise<void> {
+  await apiFetch('/social/friend-remove', {
+    method: 'POST',
+    body: JSON.stringify({ friendUserId }),
+  });
+}
+
+export async function sendDirectChallenge(input: {
+  toUserId: string;
+  roomCode: string;
+  variant: GameVariant;
+  timeControlId: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  hostColor: PieceColor;
+}): Promise<{ challenge: DirectChallengeSummary }> {
+  return apiFetch<{ challenge: DirectChallengeSummary }>('/social/challenge', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function respondDirectChallenge(
+  challengeId: string,
+  action: 'accept' | 'decline' | 'cancel'
+): Promise<{ challenge: DirectChallengeSummary }> {
+  return apiFetch<{ challenge: DirectChallengeSummary }>('/social/challenge-respond', {
+    method: 'POST',
+    body: JSON.stringify({ challengeId, action }),
+  });
 }

@@ -34,10 +34,40 @@ export interface PublicUser {
   trollAccess: TrollAccessSummary;
 }
 
+export interface FriendRequestRecord {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  createdAt: number;
+}
+
+export interface DirectChallengeRecord {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  roomCode: string;
+  variant: string;
+  timeControlId: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  hostColor: 'w' | 'b';
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  createdAt: number;
+}
+
 export interface DatabaseState {
   secret: string;
   ownerId: string | null;
   users: Record<string, StoredUser>;
+  friends: Record<string, string[]>;
+  friendRequests: FriendRequestRecord[];
+  challenges: DirectChallengeRecord[];
+  presence: Record<string, number>;
 }
 
 export interface RoomEventRecord {
@@ -221,7 +251,28 @@ async function loadDatabase(store: StoreAdapter): Promise<DatabaseState> {
       secret: crypto.randomBytes(32).toString('hex'),
       ownerId: null,
       users: {},
+      friends: {},
+      friendRequests: [],
+      challenges: [],
+      presence: {},
     };
+    dirty = true;
+  }
+
+  if (!db.friends) {
+    db.friends = {};
+    dirty = true;
+  }
+  if (!db.friendRequests) {
+    db.friendRequests = [];
+    dirty = true;
+  }
+  if (!db.challenges) {
+    db.challenges = [];
+    dirty = true;
+  }
+  if (!db.presence) {
+    db.presence = {};
     dirty = true;
   }
 
@@ -558,6 +609,260 @@ export async function handleApiRequest(
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((u) => toPublicUser(u, now));
     return jsonResponse(200, { updated: toPublicUser(target, now), users });
+  }
+
+  if (method === 'GET' && path === '/social/state') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in to access your friends list.' });
+    }
+    const now = Date.now();
+    const prevSeen = db.presence[currentUser.id] || 0;
+    let dirty = false;
+    if (now - prevSeen > 12_000) {
+      db.presence[currentUser.id] = now;
+      dirty = true;
+    }
+
+    const activeChallenges = db.challenges.filter((c) => now - c.createdAt < 30 * 60_000);
+    if (activeChallenges.length !== db.challenges.length) {
+      db.challenges = activeChallenges;
+      dirty = true;
+    }
+
+    if (dirty) {
+      await store.setJson(DB_KEY, db);
+    }
+
+    const usersById = new Map<string, StoredUser>();
+    for (const u of Object.values(db.users)) usersById.set(u.id, u);
+
+    const friendIds = db.friends[currentUser.id] || [];
+    const friends = friendIds
+      .map((fid) => usersById.get(fid))
+      .filter((u): u is StoredUser => Boolean(u))
+      .map((u) => {
+        const lastSeenAt = db.presence[u.id] ?? null;
+        const online = lastSeenAt !== null && now - lastSeenAt <= 45_000;
+        return {
+          id: u.id,
+          username: u.username,
+          displayName: u.displayName,
+          online,
+          lastSeenAt,
+        };
+      })
+      .sort((a, b) => Number(b.online) - Number(a.online) || a.username.localeCompare(b.username));
+
+    const incomingRequests = db.friendRequests.filter((r) => r.toUserId === currentUser.id);
+    const outgoingRequests = db.friendRequests.filter((r) => r.fromUserId === currentUser.id);
+    const incomingChallenges = db.challenges.filter(
+      (c) => c.toUserId === currentUser.id && c.status === 'pending'
+    );
+    const outgoingChallenges = db.challenges.filter(
+      (c) => c.fromUserId === currentUser.id && (c.status === 'pending' || c.status === 'accepted')
+    );
+
+    return jsonResponse(200, {
+      friends,
+      incomingRequests,
+      outgoingRequests,
+      incomingChallenges,
+      outgoingChallenges,
+    });
+  }
+
+  if (method === 'POST' && path === '/social/friend-request') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in to add friends.' });
+    }
+    const body = parseBody<{ username?: string }>(req);
+    const targetKey = normalizeUsername(body?.username || '');
+    if (!targetKey) {
+      return jsonResponse(400, { error: 'Enter a username to add.' });
+    }
+    const target = db.users[targetKey];
+    if (!target) {
+      return jsonResponse(404, { error: `No account found for "${body?.username?.trim()}".` });
+    }
+    if (target.id === currentUser.id) {
+      return jsonResponse(400, { error: 'You cannot add yourself as a friend.' });
+    }
+
+    const myFriends = db.friends[currentUser.id] || [];
+    if (myFriends.includes(target.id)) {
+      return jsonResponse(409, { error: `@${target.username} is already in your friends list.` });
+    }
+
+    // If they already sent us a request, accept immediately!
+    const reverseReq = db.friendRequests.find(
+      (r) => r.fromUserId === target.id && r.toUserId === currentUser.id
+    );
+    if (reverseReq) {
+      db.friendRequests = db.friendRequests.filter((r) => r.id !== reverseReq.id);
+      db.friends[currentUser.id] = [...new Set([...(db.friends[currentUser.id] || []), target.id])];
+      db.friends[target.id] = [...new Set([...(db.friends[target.id] || []), currentUser.id])];
+      await store.setJson(DB_KEY, db);
+      return jsonResponse(200, { autoAccepted: true, targetUsername: target.username });
+    }
+
+    const existing = db.friendRequests.find(
+      (r) => r.fromUserId === currentUser.id && r.toUserId === target.id
+    );
+    if (existing) {
+      return jsonResponse(409, { error: `Friend request to @${target.username} is already pending.` });
+    }
+
+    const record: FriendRequestRecord = {
+      id: crypto.randomUUID(),
+      fromUserId: currentUser.id,
+      fromUsername: currentUser.username,
+      toUserId: target.id,
+      toUsername: target.username,
+      createdAt: Date.now(),
+    };
+    db.friendRequests.push(record);
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(201, { request: record });
+  }
+
+  if (method === 'POST' && path === '/social/friend-respond') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in required.' });
+    }
+    const body = parseBody<{ requestId?: string; action?: 'accept' | 'decline' }>(req);
+    if (!body?.requestId || !body.action) {
+      return jsonResponse(400, { error: 'requestId and action are required.' });
+    }
+    const idx = db.friendRequests.findIndex((r) => r.id === body.requestId);
+    if (idx === -1) {
+      return jsonResponse(404, { error: 'Friend request not found.' });
+    }
+    const reqRecord = db.friendRequests[idx];
+    if (reqRecord.toUserId !== currentUser.id && reqRecord.fromUserId !== currentUser.id) {
+      return jsonResponse(403, { error: 'Not authorized for this request.' });
+    }
+    if (body.action === 'accept' && reqRecord.toUserId !== currentUser.id) {
+      return jsonResponse(403, { error: 'Only the recipient can accept a request.' });
+    }
+
+    db.friendRequests.splice(idx, 1);
+    if (body.action === 'accept') {
+      db.friends[reqRecord.fromUserId] = [
+        ...new Set([...(db.friends[reqRecord.fromUserId] || []), reqRecord.toUserId]),
+      ];
+      db.friends[reqRecord.toUserId] = [
+        ...new Set([...(db.friends[reqRecord.toUserId] || []), reqRecord.fromUserId]),
+      ];
+    }
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(200, { ok: true });
+  }
+
+  if (method === 'POST' && path === '/social/friend-remove') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in required.' });
+    }
+    const body = parseBody<{ friendUserId?: string }>(req);
+    if (!body?.friendUserId) {
+      return jsonResponse(400, { error: 'friendUserId is required.' });
+    }
+    db.friends[currentUser.id] = (db.friends[currentUser.id] || []).filter(
+      (id) => id !== body.friendUserId
+    );
+    db.friends[body.friendUserId] = (db.friends[body.friendUserId] || []).filter(
+      (id) => id !== currentUser.id
+    );
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(200, { ok: true });
+  }
+
+  if (method === 'POST' && path === '/social/challenge') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in to challenge friends.' });
+    }
+    const body = parseBody<{
+      toUserId?: string;
+      roomCode?: string;
+      variant?: string;
+      timeControlId?: string;
+      timeControlLabel?: string;
+      baseMs?: number;
+      incMs?: number;
+      hostColor?: 'w' | 'b';
+    }>(req);
+    if (!body?.toUserId || !body.roomCode) {
+      return jsonResponse(400, { error: 'Target friend and roomCode are required.' });
+    }
+    const usersById = new Map<string, StoredUser>();
+    for (const u of Object.values(db.users)) usersById.set(u.id, u);
+    const target = usersById.get(body.toUserId);
+    if (!target) {
+      return jsonResponse(404, { error: 'Friend account not found.' });
+    }
+    const friendList = db.friends[currentUser.id] || [];
+    if (!friendList.includes(target.id)) {
+      return jsonResponse(403, { error: 'You can only send direct challenges to friends.' });
+    }
+
+    const now = Date.now();
+    // Replace any existing pending challenge from currentUser to this target
+    db.challenges = db.challenges.filter(
+      (c) => !(c.fromUserId === currentUser.id && c.toUserId === target.id && c.status === 'pending')
+    );
+
+    const challenge: DirectChallengeRecord = {
+      id: crypto.randomUUID(),
+      fromUserId: currentUser.id,
+      fromUsername: currentUser.username,
+      toUserId: target.id,
+      toUsername: target.username,
+      roomCode: body.roomCode.toUpperCase(),
+      variant: body.variant || 'standard',
+      timeControlId: body.timeControlId || '5+0',
+      timeControlLabel: body.timeControlLabel || '5 | 0',
+      baseMs: Number.isFinite(body.baseMs) ? Number(body.baseMs) : 300_000,
+      incMs: Number.isFinite(body.incMs) ? Number(body.incMs) : 0,
+      hostColor: body.hostColor === 'b' ? 'b' : 'w',
+      status: 'pending',
+      createdAt: now,
+    };
+    db.presence[currentUser.id] = now;
+    db.challenges.push(challenge);
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(201, { challenge });
+  }
+
+  if (method === 'POST' && path === '/social/challenge-respond') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in required.' });
+    }
+    const body = parseBody<{
+      challengeId?: string;
+      action?: 'accept' | 'decline' | 'cancel';
+    }>(req);
+    if (!body?.challengeId || !body.action) {
+      return jsonResponse(400, { error: 'challengeId and action are required.' });
+    }
+    const challenge = db.challenges.find((c) => c.id === body.challengeId);
+    if (!challenge) {
+      return jsonResponse(404, { error: 'Challenge expired or not found.' });
+    }
+
+    if (body.action === 'cancel') {
+      if (challenge.fromUserId !== currentUser.id) {
+        return jsonResponse(403, { error: 'Only the challenger can cancel.' });
+      }
+      challenge.status = 'cancelled';
+    } else {
+      if (challenge.toUserId !== currentUser.id) {
+        return jsonResponse(403, { error: 'Only the challenged friend can respond.' });
+      }
+      challenge.status = body.action === 'accept' ? 'accepted' : 'declined';
+    }
+
+    db.presence[currentUser.id] = Date.now();
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(200, { challenge });
   }
 
   return jsonResponse(404, { error: `Unknown API route: ${method} ${path}` });
