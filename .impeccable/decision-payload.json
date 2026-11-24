@@ -1,0 +1,253 @@
+{
+  "title": "Choose your tournament studio direction",
+  "question": "The roll assigned Nocturnal Broadcast Studio (Candidate 5). Pick it, choose an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "Nocturnal Broadcast Studio",
+      "kicker": "THE ROLL",
+      "lineage": "Modern FIDE / esports broadcast control room",
+      "thesis": "A dark-slate tournament arena where the 64-square board anchors the room and authorized players quietly unlock an invisible side-rail operator console.",
+      "palette": [
+        "#0b0e14",
+        "#131822",
+        "#dfe3eb",
+        "#3b4861",
+        "#38bdf8",
+        "#22c55e"
+      ],
+      "materials": [
+        "matte dark slate",
+        "glacier-and-indigo board",
+        "1px structural hairlines"
+      ],
+      "viewport": "Top room bar with invite code and optional Sign In, centered tournament board with split-second clocks, and a clean move/chat rail (with hidden Ctrl+Shift+T troll drawer for authorized accounts).",
+      "risk": "Falls flat into generic dark SaaS if board squares, clock hierarchy, and active-turn luminance lack contrast.",
+      "raised": [
+        {
+          "from": "challenger-emigre",
+          "raise": "Strict mathematical type scale with zero arbitrary sizes between headings, notation, and clocks."
+        },
+        {
+          "from": "challenger-orienteering",
+          "raise": "Clean separation between the immutable board coordinate ground and the crisp tactical/troll vector overlay."
+        },
+        {
+          "from": "challenger-botanical",
+          "raise": "Spatial registration keeps the central chessboard locked at one exact frame across lobby, match, and replay."
+        },
+        {
+          "from": "challenger-doujin",
+          "raise": "Compact single-click action grid inside the stealth operator drawer so troll powers trigger without scrolling."
+        },
+        {
+          "from": "challenger-zoo",
+          "raise": "Decisive sliding pill states for turn ownership, room readiness, and active troll toggles."
+        }
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html",
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "Broadcast Desk & Eval Ribbon",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Live tournament broadcast desk (Freestyle / FIDE Grand Prix)",
+      "thesis": "A sleek broadcast studio layout with horizontal match strip, warm-stone board squares, and electric cobalt turn focus.",
+      "palette": [
+        "#0c1017",
+        "#161c26",
+        "#d8d2c7",
+        "#425066",
+        "#3b82f6"
+      ],
+      "materials": [
+        "charcoal slate",
+        "warm stone & slate board",
+        "tabular broadcast tape"
+      ],
+      "viewport": "Full-bleed top match bar above a wide board-plus-notation split, anchored by horizontal clock bands.",
+      "risk": "Closely mirrors mainstream tournament broadcast conventions.",
+      "html": ".impeccable/mocks/decision/model-pick.html",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-variable-font",
+      "kind": "challenger",
+      "catalogId": "variable-font-specimen",
+      "verdict": "competitive",
+      "lineage": "Swiss interactive type specimen",
+      "thesis": "An ultra-crisp Swiss precision board studio where oversized tabular clocks and variable-weight notation lead the room.",
+      "palette": [
+        "#101216",
+        "#f3f4f6",
+        "#333a47",
+        "#e11d48"
+      ],
+      "materials": [
+        "high-contrast slate paper",
+        "variable-weight numerals",
+        "minimalist hairline grid"
+      ],
+      "viewport": "Giant crisp countdown digits stack beside a stark square board, with one crimson accent marking active pressure and check.",
+      "case": "Holds clarity strongly through disciplined tabular numerals and spatial calm; loses narrowly on classic dark tournament studio expectations.",
+      "risk": "Can feel stark or clinical if piece silhouettes lack warmth.",
+      "html": ".impeccable/mocks/decision/challenger-variable-font.html",
+      "comp": ".impeccable/mocks/decision/challenger-variable-font.png",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/variable-font-specimen.webp"
+    },
+    {
+      "id": "challenger-emigre",
+      "kind": "challenger",
+      "catalogId": "emigre-bitmap-specimen",
+      "verdict": "declined",
+      "lineage": "1990s Emigre bitmap type specimen",
+      "thesis": "Coarse pixel-grid chess labels and integer-stepped display banners over stark monochrome.",
+      "palette": [
+        "#111111",
+        "#f4f4f0",
+        "#00e5ff"
+      ],
+      "materials": [
+        "coarse pixel type",
+        "dot-matrix grid"
+      ],
+      "viewport": "Blocky pixel clock digits flanking a stark monochrome board.",
+      "case": "Loses both axes: pixel zine typography hurts rapid algebraic readability and breaks the requested sleek tournament studio feel.",
+      "kept": "Strict mathematical type scale across sizes.",
+      "risk": "Fatiguing during long matches.",
+      "hero": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen.webp"
+    },
+    {
+      "id": "challenger-orienteering",
+      "kind": "challenger",
+      "catalogId": "notation-diagram-systems-orienteering-map",
+      "verdict": "declined",
+      "lineage": "ISOM orienteering contour maps",
+      "thesis": "Terrain-coded forest board with purple tactical vector lines riding overhead.",
+      "palette": [
+        "#ffffff",
+        "#84a955",
+        "#a855f7",
+        "#785233"
+      ],
+      "materials": [
+        "contour ink lines",
+        "purple vector paths"
+      ],
+      "viewport": "Topographic terrain board with numbered purple move paths.",
+      "case": "Loses both axes: forest/marsh map colors fight chess piece legibility and contradict the dark slate brief.",
+      "kept": "Clean separation between fixed board ground and tactical vector overlay.",
+      "risk": "Low contrast under fast blitz play.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-orienteering-map-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/notation-diagram-systems-orienteering-map.webp"
+    },
+    {
+      "id": "challenger-botanical",
+      "kind": "challenger",
+      "catalogId": "editorial-sequence-montage-botanical-folio-season",
+      "verdict": "declined",
+      "lineage": "Natural history botanical sequence folios",
+      "thesis": "Five warm-cream folio plates tracking match phases at fixed specimen scale.",
+      "palette": [
+        "#f7f2e7",
+        "#2e4a38",
+        "#b91c1c"
+      ],
+      "materials": [
+        "cream folio plates",
+        "sepia hairlines"
+      ],
+      "viewport": "Cream archival board framed by phase plates.",
+      "case": "Loses both axes: warm archival cream folio conflicts with dark slate real-time multiplayer ergonomics.",
+      "kept": "Fixed spatial registration across lobby, game, and replay states.",
+      "risk": "Feels passive for live blitz.",
+      "hero": "https://impeccable.style/worlds/cards/editorial-sequence-montage-botanical-folio-season-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/editorial-sequence-montage-botanical-folio-season.webp"
+    },
+    {
+      "id": "challenger-doujin",
+      "kind": "challenger",
+      "catalogId": "pop-culture-shelf-doujin-event-catalog",
+      "verdict": "declined",
+      "lineage": "Event hall circle catalog on newsprint",
+      "thesis": "Dense black-and-newsprint cell matrix packing every move and power into stamp squares.",
+      "palette": [
+        "#d8d8d4",
+        "#121212",
+        "#ef4444"
+      ],
+      "materials": [
+        "newsprint gray",
+        "biro highlight marks"
+      ],
+      "viewport": "Dense hall-map cell grid alongside a compact board.",
+      "case": "Loses both axes: cramped newsprint density overwhelms players during real-time chess.",
+      "kept": "Single-click compact cell grid inside the hidden troll drawer.",
+      "risk": "Visual clutter at full screen.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-doujin-event-catalog-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/pop-culture-shelf-doujin-event-catalog.webp"
+    },
+    {
+      "id": "challenger-zoo",
+      "kind": "challenger",
+      "catalogId": "aww2-zoo-gardens-guide-map",
+      "verdict": "declined",
+      "lineage": "Summer park & gardens guide map",
+      "thesis": "Playful apple-green and coral rounded lobes separating clocks, board, and room controls.",
+      "palette": [
+        "#f5f1e4",
+        "#8ed462",
+        "#ff705d",
+        "#f5e211"
+      ],
+      "materials": [
+        "flat pastel solids",
+        "overshooting capsules"
+      ],
+      "viewport": "Curved coastline lobes holding a pastel board and bright capsule chips.",
+      "case": "Loses both axes: playful park palette gives away the casual gag tone and distracts from a serious chess cover identity.",
+      "kept": "Crisp capsule state-chip transitions for turn and toggle status.",
+      "risk": "Breaks tournament credibility.",
+      "hero": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "Modern Chess Platform Standard",
+    "thesis": "Familiar dark tournament chessboard flanked by opponent strip, clock box, and move list.",
+    "palette": [
+      "#161512",
+      "#262421",
+      "#eeeed2",
+      "#769656",
+      "#81b64c"
+    ],
+    "materials": [
+      "charcoal panels",
+      "classic green-cream board",
+      "standard UI controls"
+    ],
+    "viewport": "Left sidebar nav, central green-and-ivory board, right notation & chat panel.",
+    "risk": "Looks immediately recognizable as a clone of standard chess platforms.",
+    "html": ".impeccable/mocks/decision/canon.html",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}

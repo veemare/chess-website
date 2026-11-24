@@ -1,0 +1,8 @@
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/reference/
+.data/
+node_modules/
+dist/
+.netlify/
+*.tsbuildinfo
