@@ -94,7 +94,6 @@ function loadSafe(fen: string): Chess {
 export function generateChess960StartFen(): string {
   const rank: Array<string | null> = Array(8).fill(null);
 
-  // Light square bishop (indices 1, 3, 5, 7) & Dark square bishop (0, 2, 4, 6)
   const lightIdx = [1, 3, 5, 7][Math.floor(Math.random() * 4)];
   const darkIdx = [0, 2, 4, 6][Math.floor(Math.random() * 4)];
   rank[lightIdx] = 'B';
@@ -103,17 +102,14 @@ export function generateChess960StartFen(): string {
   const emptyIndices = () =>
     rank.map((v, i) => (v === null ? i : -1)).filter((i) => i !== -1);
 
-  // Queen
   const qPool = emptyIndices();
   rank[qPool[Math.floor(Math.random() * qPool.length)]] = 'Q';
 
-  // Two Knights
   for (let n = 0; n < 2; n++) {
     const nPool = emptyIndices();
     rank[nPool[Math.floor(Math.random() * nPool.length)]] = 'N';
   }
 
-  // Remaining 3 squares MUST be R - K - R left to right
   const rem = emptyIndices();
   rank[rem[0]] = 'R';
   rank[rem[1]] = 'K';
@@ -121,7 +117,6 @@ export function generateChess960StartFen(): string {
 
   const whiteBack = rank.join('');
   const blackBack = whiteBack.toLowerCase();
-  // Keep castling flags only if K is on e-file and Rooks on corners; Chess960 otherwise starts '-'
   const castling = whiteBack === 'RNBQKBNR' ? 'KQkq' : '-';
   return `${blackBack}/pppppppp/8/8/8/8/PPPPPPPP/${whiteBack} w ${castling} - 0 1`;
 }
@@ -214,7 +209,6 @@ function wouldAtomicMoveExplodeOwnKing(cBefore: Chess, from: string, to: string,
   const isCapture = Boolean(target) || (movingPiece?.type === 'p' && epSquare === to);
   if (!isCapture) return false;
 
-  // Moving king cannot capture in Atomic (own king is at explosion center)
   if (movingPiece?.type === 'k') return true;
 
   const kings = findKings(cBefore);
@@ -379,7 +373,7 @@ export function applyStandardMove(
   promotion: Exclude<PieceType, 'p' | 'k'> = 'q',
   keepTurnAfter = false,
   variant: GameVariant = 'standard'
-): { fenAfter: string; san: string; deliveredCheck: boolean } | null {
+): { fenAfter: string; san: string; deliveredCheck: boolean; captured: boolean } | null {
   const c = loadSafe(fen);
   const movingColor = c.turn();
 
@@ -396,7 +390,6 @@ export function applyStandardMove(
     if (!move) return null;
 
     if (variant === 'atomic' && move.captured) {
-      // Remove capturing piece on `to` and all non-pawn pieces in 3x3 blast radius
       c.remove(to as Square);
       const tf = FILES.indexOf(to[0]);
       const tr = Number(to[1]);
@@ -424,7 +417,12 @@ export function applyStandardMove(
     const deliveredCheck =
       Boolean(kings.w && kings.b) && post.turn() !== movingColor && post.inCheck();
 
-    return { fenAfter, san: move.san, deliveredCheck };
+    return {
+      fenAfter,
+      san: move.san,
+      deliveredCheck,
+      captured: Boolean(move.captured),
+    };
   } catch {
     return null;
   }
@@ -483,6 +481,110 @@ export function applyResurrectPiece(
   const fenAfter = sanitizeCastlingInFen(c.fen());
   const label = pieceType === 'p' ? '' : pieceType.toUpperCase();
   return { fenAfter, san: `${label}@${square}` };
+}
+
+export function applySnipePiece(
+  fen: string,
+  square: string,
+  attackerColor: PieceColor
+): { fenAfter: string; san: string } | null {
+  const c = loadSafe(fen);
+  const target = c.get(square as Square);
+  if (!target || target.color === attackerColor || target.type === 'k') return null;
+  c.remove(square as Square);
+  const fenAfter = sanitizeCastlingInFen(c.fen());
+  return { fenAfter, san: `×${square}` };
+}
+
+export function applyClonePiece(
+  fen: string,
+  sourceSq: string,
+  targetSq: string,
+  ownerColor: PieceColor
+): { fenAfter: string; san: string } | null {
+  const c = loadSafe(fen);
+  const src = c.get(sourceSq as Square);
+  if (!src || src.color !== ownerColor || src.type === 'k') return null;
+  if (c.get(targetSq as Square)) return null;
+  c.put({ type: src.type, color: ownerColor }, targetSq as Square);
+  const fenAfter = sanitizeCastlingInFen(c.fen());
+  const label = src.type === 'p' ? '' : src.type.toUpperCase();
+  return { fenAfter, san: `${label}+${targetSq}` };
+}
+
+export function applySwapPieces(
+  fen: string,
+  sqA: string,
+  sqB: string
+): { fenAfter: string; san: string } | null {
+  if (sqA === sqB) return null;
+  const c = loadSafe(fen);
+  const pA = c.get(sqA as Square);
+  const pB = c.get(sqB as Square);
+  if (!pA || !pB || pA.type === 'k' || pB.type === 'k') return null;
+  c.put({ type: pB.type, color: pB.color }, sqA as Square);
+  c.put({ type: pA.type, color: pA.color }, sqB as Square);
+  const fenAfter = sanitizeCastlingInFen(c.fen());
+  return { fenAfter, san: `${sqA}⇄${sqB}` };
+}
+
+export function applyShieldWall(
+  fen: string,
+  color: PieceColor
+): { fenAfter: string; san: string } | null {
+  const c = loadSafe(fen);
+  const kings = findKings(c);
+  const kingSq = color === 'w' ? kings.w : kings.b;
+  if (!kingSq) return null;
+
+  const kf = FILES.indexOf(kingSq[0]);
+  const kr = Number(kingSq[1]);
+  const frontRank = color === 'w' ? kr + 1 : kr - 1;
+  if (frontRank < 2 || frontRank > 7) return null;
+
+  let placed = 0;
+  for (let df = -1; df <= 1; df++) {
+    const nf = kf + df;
+    if (nf < 0 || nf > 7) continue;
+    const sq = `${FILES[nf]}${frontRank}` as Square;
+    if (!c.get(sq)) {
+      c.put({ type: 'p', color }, sq);
+      placed++;
+    }
+  }
+  if (placed === 0) return null;
+  const fenAfter = sanitizeCastlingInFen(c.fen());
+  return { fenAfter, san: `Wall×${placed}` };
+}
+
+export function applyScramblePieces(
+  fen: string,
+  targetColor: PieceColor
+): { fenAfter: string; san: string } | null {
+  const c = loadSafe(fen);
+  const rank = targetColor === 'w' ? '1' : '8';
+  const squares: Square[] = [];
+  const pieces: Array<{ type: PieceSymbol; color: PieceColor }> = [];
+
+  for (const f of FILES) {
+    const sq = `${f}${rank}` as Square;
+    const p = c.get(sq);
+    if (p && p.color === targetColor && p.type !== 'k') {
+      squares.push(sq);
+      pieces.push({ type: p.type, color: p.color });
+    }
+  }
+  if (squares.length < 2) return null;
+
+  for (let i = pieces.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+  }
+  for (let i = 0; i < squares.length; i++) {
+    c.put(pieces[i], squares[i]);
+  }
+  const fenAfter = sanitizeCastlingInFen(c.fen());
+  return { fenAfter, san: `Scramble` };
 }
 
 export function getCapturedPieces(fen: string): {
@@ -544,8 +646,8 @@ function getPstValue(type: PieceType, color: PieceColor, row: number, col: numbe
   }
 }
 
-export function evaluatePositionCp(fen: string): number {
-  const c = loadSafe(fen);
+// Evaluates directly on the in-memory Chess board (zero FEN parse / allocation)
+function evaluateChessInstance(c: Chess): number {
   const board = c.board();
   let score = 0;
   for (let r = 0; r < 8; r++) {
@@ -559,10 +661,20 @@ export function evaluatePositionCp(fen: string): number {
   return score;
 }
 
+export function evaluatePositionCp(fen: string): number {
+  return evaluateChessInstance(loadSafe(fen));
+}
+
 export function findBestMove(
   fen: string,
   depth = 3
-): { from: string; to: string; san: string; promotion?: Exclude<PieceType, 'p' | 'k'>; evalCp: number } | null {
+): {
+  from: string;
+  to: string;
+  san: string;
+  promotion?: Exclude<PieceType, 'p' | 'k'>;
+  evalCp: number;
+} | null {
   const c = loadSafe(fen);
   const kings = findKings(c);
   if (!kings.w || !kings.b) return null;
@@ -581,14 +693,18 @@ export function findBestMove(
   let bestEval = maximizing ? -Infinity : Infinity;
 
   function alphabeta(node: Chess, d: number, alpha: number, beta: number, isMax: boolean): number {
-    if (d === 0) return evaluatePositionCp(node.fen());
+    if (d === 0) return evaluateChessInstance(node);
     const legal = node.moves({ verbose: true });
     if (legal.length === 0) {
       if (node.inCheck()) return isMax ? -99999 - d : 99999 + d;
       return 0;
     }
 
-    legal.sort((a, b) => (b.captured ? 1 : 0) - (a.captured ? 1 : 0));
+    legal.sort((a, b) => {
+      const sa = a.captured ? PIECE_VALUES[a.captured] : 0;
+      const sb = b.captured ? PIECE_VALUES[b.captured] : 0;
+      return sb - sa;
+    });
 
     if (isMax) {
       let maxEv = -Infinity;
@@ -631,5 +747,55 @@ export function findBestMove(
     san: bestMove.san,
     promotion: bestMove.promotion as Exclude<PieceType, 'p' | 'k'> | undefined,
     evalCp: bestEval,
+  };
+}
+
+export function findWorstMove(
+  fen: string
+): {
+  from: string;
+  to: string;
+  san: string;
+  promotion?: Exclude<PieceType, 'p' | 'k'>;
+  evalCp: number;
+} | null {
+  const c = loadSafe(fen);
+  const kings = findKings(c);
+  if (!kings.w || !kings.b) return null;
+  const moves = c.moves({ verbose: true });
+  if (moves.length === 0) return null;
+
+  const maximizing = c.turn() === 'w';
+  let worstMove = moves[0];
+  let worstEval = maximizing ? Infinity : -Infinity;
+
+  for (const m of moves) {
+    c.move(m);
+    // 1-ply opponent reply lookahead to find the biggest blunder
+    const replies = c.moves({ verbose: true });
+    let score = evaluateChessInstance(c);
+    if (replies.length > 0) {
+      let bestReply = maximizing ? Infinity : -Infinity;
+      for (const r of replies) {
+        c.move(r);
+        const s = evaluateChessInstance(c);
+        c.undo();
+        if (maximizing ? s < bestReply : s > bestReply) bestReply = s;
+      }
+      score = bestReply;
+    }
+    c.undo();
+    if (maximizing ? score < worstEval : score > worstEval) {
+      worstEval = score;
+      worstMove = m;
+    }
+  }
+
+  return {
+    from: worstMove.from,
+    to: worstMove.to,
+    san: worstMove.san,
+    promotion: worstMove.promotion as Exclude<PieceType, 'p' | 'k'> | undefined,
+    evalCp: worstEval,
   };
 }

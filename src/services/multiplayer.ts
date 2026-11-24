@@ -168,6 +168,10 @@ export class RoomTransport {
 
     const poll = async () => {
       if (this.closed || !this.relayActive) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        this.relayTimer = window.setTimeout(poll, 2200);
+        return;
+      }
       try {
         const res = await fetchRoomRelayEvents(this.roomCode, this.relaySeq);
         for (const ev of res.events) {
@@ -182,7 +186,7 @@ export class RoomTransport {
         // Keep polling gracefully on transient error
       }
       if (!this.closed && this.relayActive) {
-        this.relayTimer = window.setTimeout(poll, 950);
+        this.relayTimer = window.setTimeout(poll, 1400);
       }
     };
 

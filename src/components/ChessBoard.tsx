@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react';
+import { memo, useMemo, useState, type DragEvent } from 'react';
 import { getBoardMap, getLegalMovesFromSquare } from '../engine/chessCore';
 import type {
   GameVariant,
@@ -26,6 +26,8 @@ interface ChessBoardProps {
   lastMove: LastMoveHighlight | null;
   pendingPromotion: { from: string; to: string; color: PieceColor } | null;
   hintArrow: { from: string; to: string } | null;
+  evalCp: number | null;
+  showEvalBar: boolean;
   armedTroll: TrollArmedAction;
   canTroll: boolean;
   cursesReceived: OpponentCurseState | null;
@@ -46,7 +48,7 @@ function squareToPercent(square: string, flipped: boolean): { x: number; y: numb
   };
 }
 
-export function ChessBoard({
+export const ChessBoard = memo(function ChessBoard({
   fen,
   variant = 'standard',
   orientation,
@@ -58,6 +60,8 @@ export function ChessBoard({
   lastMove,
   pendingPromotion,
   hintArrow,
+  evalCp,
+  showEvalBar,
   armedTroll,
   canTroll,
   cursesReceived,
@@ -69,7 +73,8 @@ export function ChessBoard({
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [dodgeOffsets, setDodgeOffsets] = useState<Record<string, { x: number; y: number }>>({});
 
-  const boardMap = getBoardMap(fen);
+  const boardMap = useMemo(() => getBoardMap(fen), [fen]);
+
   const forcedFlip = Boolean(!canTroll && cursesReceived?.boardFlippedForced);
   const effectiveOrientation: PieceColor = forcedFlip
     ? orientation === 'w'
@@ -78,28 +83,34 @@ export function ChessBoard({
     : orientation;
   const isFlipped = effectiveOrientation === 'b';
 
-  const displayFiles = isFlipped ? [...FILES].reverse() : FILES;
-  const displayRanks = isFlipped ? [...RANKS].reverse() : RANKS;
+  const displayFiles = useMemo(() => (isFlipped ? [...FILES].reverse() : FILES), [isFlipped]);
+  const displayRanks = useMemo(() => (isFlipped ? [...RANKS].reverse() : RANKS), [isFlipped]);
 
   const effectiveLastMove =
     !canTroll && cursesReceived?.gaslightLastMove
       ? cursesReceived.gaslightLastMove
       : lastMove;
 
+  const now = Date.now();
   const isFakeReconnecting =
     !canTroll &&
-    cursesReceived?.fakeReconnectUntil !== null &&
-    cursesReceived?.fakeReconnectUntil !== undefined &&
-    cursesReceived.fakeReconnectUntil > Date.now();
+    Boolean(cursesReceived?.fakeReconnectUntil && cursesReceived.fakeReconnectUntil > now);
 
+  const isGhostActive =
+    !canTroll &&
+    Boolean(cursesReceived?.ghostPiecesUntil && cursesReceived.ghostPiecesUntil > now);
+
+  const isFakeOutcome =
+    !canTroll &&
+    Boolean(cursesReceived?.fakeOutcomeUntil && cursesReceived.fakeOutcomeUntil > now);
+
+  const isDrunk = Boolean(!canTroll && cursesReceived?.drunkPieces);
   const isButterfingers = Boolean(!canTroll && cursesReceived?.butterfingers);
 
   const isTrollTargetMode =
-    canTroll &&
-    armedTroll !== null &&
-    armedTroll.type !== 'double_move';
+    canTroll && armedTroll !== null && armedTroll.type !== 'double_move';
 
-  const legalTargets = (() => {
+  const legalTargets = useMemo(() => {
     if (!selectedSquare) return new Set<string>();
     if (canTroll && (armedTroll?.type === 'teleport' || armedTroll?.type === 'steal_piece')) {
       const targets = new Set<string>();
@@ -107,15 +118,14 @@ export function ChessBoard({
         for (const f of FILES) {
           const sq = `${f}${r}`;
           if (sq === selectedSquare) continue;
-          const occupant = boardMap[sq];
-          if (occupant?.type === 'k') continue;
+          if (boardMap[sq]?.type === 'k') continue;
           targets.add(sq);
         }
       }
       return targets;
     }
     return new Set(getLegalMovesFromSquare(fen, selectedSquare, variant));
-  })();
+  }, [selectedSquare, canTroll, armedTroll, boardMap, fen, variant]);
 
   function getDisplayedPiece(sq: string) {
     const piece = boardMap[sq];
@@ -129,18 +139,23 @@ export function ChessBoard({
     return piece;
   }
 
+  function isSquareActionMode(action: TrollArmedAction): boolean {
+    if (!action) return false;
+    return (
+      action.type === 'transform' ||
+      action.type === 'resurrect' ||
+      action.type === 'disguise' ||
+      action.type === 'gaslight' ||
+      action.type === 'snipe' ||
+      action.type === 'clone' ||
+      action.type === 'swap'
+    );
+  }
+
   function handleSquareClick(sq: string) {
     if (isGameOver || isFakeReconnecting) return;
 
-    // Troll single-square actions (transform, resurrect, disguise, gaslight)
-    if (
-      canTroll &&
-      armedTroll &&
-      (armedTroll.type === 'transform' ||
-        armedTroll.type === 'resurrect' ||
-        armedTroll.type === 'disguise' ||
-        armedTroll.type === 'gaslight')
-    ) {
+    if (canTroll && isSquareActionMode(armedTroll)) {
       setSelectedSquare(null);
       onTrollSquareClick(sq);
       return;
@@ -163,7 +178,6 @@ export function ChessBoard({
         return;
       }
 
-      // Switch selection if clicking own movable piece
       if (allowSteal && piece && piece.color !== playerColor && piece.type !== 'k') {
         setSelectedSquare(sq);
         return;
@@ -181,7 +195,6 @@ export function ChessBoard({
       return;
     }
 
-    // No square selected yet
     if (!piece) return;
     if (allowSteal) {
       if (piece.color !== playerColor && piece.type !== 'k') {
@@ -246,7 +259,7 @@ export function ChessBoard({
         delete next[sq];
         return next;
       });
-    }, 340);
+    }, 320);
   }
 
   const arrowPts =
@@ -257,165 +270,182 @@ export function ChessBoard({
         }
       : null;
 
+  // White advantage % for private Eval Bar (50% = 0.0)
+  const whiteEvalPct = (() => {
+    if (evalCp === null) return 50;
+    const clamped = Math.max(-1000, Math.min(1000, evalCp));
+    const pct = 50 + (clamped / 1000) * 45;
+    return isFlipped ? 100 - pct : pct;
+  })();
+
   return (
-    <div className="board-shell">
-      <div className="board-frame">
-        <div className="coord-rail-ranks" aria-hidden="true">
-          {displayRanks.map((rank) => (
-            <span key={rank} className="coord-cell">
-              {rank}
-            </span>
-          ))}
+    <div className={`board-shell ${canTroll && showEvalBar ? 'has-eval-bar' : ''}`}>
+      {canTroll && showEvalBar && (
+        <div className="eval-bar" aria-label="Private engine evaluation bar">
+          <div
+            className="eval-bar-fill"
+            style={{ height: `${whiteEvalPct}%` }}
+          />
+          <span className="eval-bar-num">
+            {evalCp !== null ? (evalCp / 100).toFixed(1) : '0.0'}
+          </span>
         </div>
+      )}
 
-        <div
-          className={`chess-board ${isTrollTargetMode ? 'is-armed' : ''} ${forcedFlip ? 'is-cursed-flip' : ''}`}
-          role="grid"
-          aria-label="Chessboard"
-        >
-          {displayRanks.map((rank) =>
-            displayFiles.map((file) => {
-              const sq = `${file}${rank}`;
-              const originalRankIdx = RANKS.indexOf(rank);
-              const originalFileIdx = FILES.indexOf(file);
-              const isLight = (originalRankIdx + originalFileIdx) % 2 === 0;
-              const piece = getDisplayedPiece(sq);
-              const isSelected = selectedSquare === sq;
-              const isLast =
-                effectiveLastMove?.from === sq || effectiveLastMove?.to === sq;
-              const isTarget = legalTargets.has(sq);
-              const isCaptureTarget = isTarget && Boolean(boardMap[sq]);
-              const isKingInCheck =
-                inCheckColor !== null &&
-                boardMap[sq]?.type === 'k' &&
-                boardMap[sq]?.color === inCheckColor;
-              const isKothHill = variant === 'king_of_hill' && KOTH_HILL.has(sq);
+      <div
+        className={`chess-board ${isTrollTargetMode ? 'is-armed' : ''} ${forcedFlip ? 'is-cursed-flip' : ''}`}
+        role="grid"
+        aria-label="Chessboard"
+      >
+        {displayRanks.map((rank, rIdx) =>
+          displayFiles.map((file, fIdx) => {
+            const sq = `${file}${rank}`;
+            const originalRankIdx = RANKS.indexOf(rank);
+            const originalFileIdx = FILES.indexOf(file);
+            const isLight = (originalRankIdx + originalFileIdx) % 2 === 0;
+            const piece = getDisplayedPiece(sq);
+            const isSelected = selectedSquare === sq;
+            const isLast =
+              effectiveLastMove?.from === sq || effectiveLastMove?.to === sq;
+            const isTarget = legalTargets.has(sq);
+            const isCaptureTarget = isTarget && Boolean(boardMap[sq]);
+            const isKingInCheck =
+              inCheckColor !== null &&
+              boardMap[sq]?.type === 'k' &&
+              boardMap[sq]?.color === inCheckColor;
+            const isKothHill = variant === 'king_of_hill' && KOTH_HILL.has(sq);
 
-              const dodge = dodgeOffsets[sq];
+            const showRankLabel = fIdx === 0;
+            const showFileLabel = rIdx === 7;
+            const dodge = dodgeOffsets[sq];
+            const hideAsGhost = isGhostActive && piece && piece.color !== playerColor;
 
-              const pieceDesc = piece
-                ? `${piece.color === 'w' ? 'White' : 'Black'} ${piece.type.toUpperCase()}`
-                : 'Empty';
+            const pieceDesc = piece
+              ? `${piece.color === 'w' ? 'White' : 'Black'} ${piece.type.toUpperCase()}`
+              : 'Empty';
 
-              return (
-                <button
-                  key={sq}
-                  type="button"
-                  role="gridcell"
-                  aria-label={`Square ${sq}, ${pieceDesc}`}
-                  onClick={() => handleSquareClick(sq)}
-                  onMouseEnter={() => handleHoverDodge(sq)}
-                  draggable={Boolean(piece)}
-                  onDragStart={(e) => handleDragStart(e, sq)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => handleDrop(e, sq)}
-                  className={[
-                    'board-sq',
-                    isLight ? 'sq-light' : 'sq-dark',
-                    isSelected ? 'sq-selected' : '',
-                    isLast ? 'sq-last' : '',
-                    isKingInCheck ? 'sq-check' : '',
-                    isCaptureTarget ? 'sq-capture' : '',
-                    isKothHill ? 'sq-koth' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  {isTarget && !isCaptureTarget && (
-                    <span className="legal-dot" aria-hidden="true" />
-                  )}
+            return (
+              <button
+                key={sq}
+                type="button"
+                role="gridcell"
+                aria-label={`Square ${sq}, ${pieceDesc}`}
+                onClick={() => handleSquareClick(sq)}
+                onMouseEnter={() => handleHoverDodge(sq)}
+                draggable={Boolean(piece)}
+                onDragStart={(e) => handleDragStart(e, sq)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleDrop(e, sq)}
+                className={[
+                  'board-sq',
+                  isLight ? 'sq-light' : 'sq-dark',
+                  isSelected ? 'sq-selected' : '',
+                  isLast ? 'sq-last' : '',
+                  isKingInCheck ? 'sq-check' : '',
+                  isCaptureTarget ? 'sq-capture' : '',
+                  isKothHill ? 'sq-koth' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {showRankLabel && <span className="sq-coord sq-coord-rank">{rank}</span>}
+                {showFileLabel && <span className="sq-coord sq-coord-file">{file}</span>}
 
-                  {piece && (
-                    <span
-                      className="piece-wrap"
-                      style={
-                        dodge
-                          ? { transform: `translate(${dodge.x}px, ${dodge.y}px)` }
-                          : undefined
-                      }
-                    >
-                      <ChessPiece color={piece.color} type={piece.type} />
-                    </span>
-                  )}
-                </button>
-              );
-            })
-          )}
+                {isTarget && !isCaptureTarget && (
+                  <span className="legal-dot" aria-hidden="true" />
+                )}
 
-          {arrowPts && (
-            <svg className="board-arrow-layer" viewBox="0 0 100 100" aria-hidden="true">
-              <defs>
-                <marker
-                  id="vesper-hint-head"
-                  markerWidth="4"
-                  markerHeight="4"
-                  refX="2.5"
-                  refY="2"
-                  orient="auto"
-                >
-                  <path d="M0,0 L4,2 L0,4 Z" fill="rgba(225, 29, 72, 0.9)" />
-                </marker>
-              </defs>
-              <line
-                x1={arrowPts.from.x}
-                y1={arrowPts.from.y}
-                x2={arrowPts.to.x}
-                y2={arrowPts.to.y}
-                stroke="rgba(225, 29, 72, 0.85)"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                markerEnd="url(#vesper-hint-head)"
-              />
-            </svg>
-          )}
+                {piece && (
+                  <span
+                    className={`piece-wrap ${isDrunk ? 'is-drunk' : ''} ${hideAsGhost ? 'is-ghost' : ''}`}
+                    style={
+                      dodge
+                        ? { transform: `translate(${dodge.x}px, ${dodge.y}px)` }
+                        : undefined
+                    }
+                  >
+                    <ChessPiece color={piece.color} type={piece.type} />
+                  </span>
+                )}
+              </button>
+            );
+          })
+        )}
 
-          {pendingPromotion && (
-            <div className="promotion-overlay" role="dialog" aria-label="Choose promotion piece">
-              <div className="promotion-panel">
-                <div className="promotion-title">Promote pawn</div>
-                <div className="promotion-choices">
-                  {(['q', 'r', 'b', 'n'] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      className="promotion-btn"
-                      aria-label={`Promote to ${p}`}
-                      onClick={() => onSelectPromotion(p)}
-                    >
-                      <ChessPiece color={pendingPromotion.color} type={p} />
-                    </button>
-                  ))}
-                </div>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={onCancelPromotion}>
-                  Cancel
-                </button>
+        {arrowPts && (
+          <svg className="board-arrow-layer" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <marker
+                id="vesper-hint-head"
+                markerWidth="4"
+                markerHeight="4"
+                refX="2.5"
+                refY="2"
+                orient="auto"
+              >
+                <path d="M0,0 L4,2 L0,4 Z" fill="rgba(255, 170, 0, 0.92)" />
+              </marker>
+            </defs>
+            <line
+              x1={arrowPts.from.x}
+              y1={arrowPts.from.y}
+              x2={arrowPts.to.x}
+              y2={arrowPts.to.y}
+              stroke="rgba(255, 170, 0, 0.88)"
+              strokeWidth="2.1"
+              strokeLinecap="round"
+              markerEnd="url(#vesper-hint-head)"
+            />
+          </svg>
+        )}
+
+        {pendingPromotion && (
+          <div className="promotion-overlay" role="dialog" aria-label="Choose promotion piece">
+            <div className="promotion-panel">
+              <div className="promotion-title">Promote pawn</div>
+              <div className="promotion-choices">
+                {(['q', 'r', 'b', 'n'] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className="promotion-btn"
+                    aria-label={`Promote to ${p}`}
+                    onClick={() => onSelectPromotion(p)}
+                  >
+                    <ChessPiece color={pendingPromotion.color} type={p} />
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={onCancelPromotion}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isFakeReconnecting && (
+          <div className="reconnect-overlay" aria-live="polite">
+            <div className="reconnect-card">
+              <span className="spinner-ring" aria-hidden="true" />
+              <div>
+                <div className="reconnect-title">Reconnecting to server</div>
+                <div className="reconnect-sub">Synchronizing move state…</div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {isFakeReconnecting && (
-            <div className="reconnect-overlay" aria-live="polite">
-              <div className="reconnect-card">
-                <span className="spinner-ring" aria-hidden="true" />
-                <div>
-                  <div className="reconnect-title">Reconnecting to arbiter</div>
-                  <div className="reconnect-sub">Synchronizing P2P board state…</div>
-                </div>
+        {isFakeOutcome && (
+          <div className="reconnect-overlay" aria-live="polite">
+            <div className="fake-outcome-card">
+              <div className="fake-outcome-title">
+                {cursesReceived?.fakeOutcomeTitle || 'Checkmate — Opponent Won'}
               </div>
+              <div className="reconnect-sub">Match concluded by server adjudication</div>
             </div>
-          )}
-        </div>
-
-        <div className="coord-corner" aria-hidden="true" />
-
-        <div className="coord-rail-files" aria-hidden="true">
-          {displayFiles.map((file) => (
-            <span key={file} className="coord-cell">
-              {file}
-            </span>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
-}
+});

@@ -12,11 +12,14 @@ interface OperatorDrawerProps {
   trollAccess: TrollAccessSummary;
   armed: TrollArmedAction;
   clockFrozen: boolean;
+  opponentClockSpeed: number;
   cursesSent: OpponentCurseState;
   showEngineHint: boolean;
+  showEvalBar: boolean;
   evalDisplay: string;
   hintMoveLabel: string | null;
   isMultiplayer: boolean;
+  isOpponentTurn: boolean;
   capturedOwnPieces: PieceType[];
   onClose: () => void;
   onPanicHide: () => void;
@@ -24,14 +27,22 @@ interface OperatorDrawerProps {
   onStealTime: (seconds: number) => void;
   onHalveOpponentTime: () => void;
   onToggleFreezeClock: () => void;
+  onToggleDoubleDrain: () => void;
   onSkipOpponentTurn: () => void;
   onForceUndoOpponent: () => void;
+  onSpawnShieldWall: () => void;
+  onScrambleOpponent: () => void;
   onToggleFlipOpponent: () => void;
+  onToggleDrunkPieces: () => void;
+  onTriggerGhostPieces: () => void;
   onTriggerFakeLag: () => void;
+  onTriggerFakeVictory: () => void;
   onTriggerButterfingers: () => void;
   onClearCurses: () => void;
   onToggleEngineHint: () => void;
+  onToggleEvalBar: () => void;
   onPlayEngineMove: () => void;
+  onForceOpponentBlunder: () => void;
 }
 
 type DrawerTab = 'rules' | 'clocks' | 'mind' | 'engine';
@@ -40,21 +51,31 @@ function describeArmed(armed: TrollArmedAction): string | null {
   if (!armed) return null;
   switch (armed.type) {
     case 'double_move':
-      return 'Double Move armed — your next move keeps the turn.';
+      return 'Double Move armed — next move keeps your turn.';
     case 'teleport':
-      return 'Teleport armed — click any of your pieces, then click any non-king square.';
+      return 'Teleport armed — click your piece, then any non-king square.';
     case 'steal_piece':
-      return 'Mind Control armed — click any opponent non-king piece and move it.';
+      return 'Mind Control armed — move any opponent non-king piece.';
+    case 'snipe':
+      return 'Snipe armed — click any enemy non-king piece to erase it.';
+    case 'clone':
+      return armed.sourceSquare
+        ? `Clone (${armed.sourceSquare}) — click an empty square to spawn copy.`
+        : 'Clone armed — click one of your non-king pieces to duplicate.';
+    case 'swap':
+      return armed.firstSquare
+        ? `Swap (${armed.firstSquare}) — click a second non-king piece.`
+        : 'Swap armed — click any first non-king piece.';
     case 'transform':
-      return `Transform armed — click any of your non-king pieces to morph into ${armed.targetPiece.toUpperCase()}.`;
+      return `Transform armed — click your piece to morph into ${armed.targetPiece.toUpperCase()}.`;
     case 'resurrect':
-      return `Resurrect armed — click any empty square to drop a ${armed.targetPiece.toUpperCase()}.`;
+      return `Resurrect armed — click an empty square to drop a ${armed.targetPiece.toUpperCase()}.`;
     case 'disguise':
-      return `Phantom Disguise armed — click your piece to mask it as a ${armed.disguiseAs.toUpperCase()} on opponent's screen.`;
+      return `Disguise armed — click your piece to mask it as ${armed.disguiseAs.toUpperCase()}.`;
     case 'gaslight':
       return armed.firstSquare
-        ? `Gaslight highlight — select second square (origin ${armed.firstSquare}).`
-        : 'Gaslight highlight — select fake origin square.';
+        ? `Fake Highlight — click destination square (from ${armed.firstSquare}).`
+        : 'Fake Highlight — click fake origin square.';
   }
 }
 
@@ -63,11 +84,14 @@ export function OperatorDrawer({
   trollAccess,
   armed,
   clockFrozen,
+  opponentClockSpeed,
   cursesSent,
   showEngineHint,
+  showEvalBar,
   evalDisplay,
   hintMoveLabel,
   isMultiplayer,
+  isOpponentTurn,
   capturedOwnPieces,
   onClose,
   onPanicHide,
@@ -75,14 +99,22 @@ export function OperatorDrawer({
   onStealTime,
   onHalveOpponentTime,
   onToggleFreezeClock,
+  onToggleDoubleDrain,
   onSkipOpponentTurn,
   onForceUndoOpponent,
+  onSpawnShieldWall,
+  onScrambleOpponent,
   onToggleFlipOpponent,
+  onToggleDrunkPieces,
+  onTriggerGhostPieces,
   onTriggerFakeLag,
+  onTriggerFakeVictory,
   onTriggerButterfingers,
   onClearCurses,
   onToggleEngineHint,
+  onToggleEvalBar,
   onPlayEngineMove,
+  onForceOpponentBlunder,
 }: OperatorDrawerProps) {
   const [tab, setTab] = useState<DrawerTab>('rules');
   const [resurrectChoice, setResurrectChoice] = useState<Exclude<PieceType, 'k'>>('q');
@@ -92,9 +124,9 @@ export function OperatorDrawer({
 
   const armedMessage = describeArmed(armed);
   const accessLabel = trollAccess.permanent
-    ? 'Permanent access'
+    ? 'Permanent'
     : trollAccess.expiresAt
-      ? `Temp · ${Math.max(1, Math.ceil((trollAccess.expiresAt - Date.now()) / 60_000))}m left`
+      ? `Temp · ${Math.max(1, Math.ceil((trollAccess.expiresAt - Date.now()) / 60_000))}m`
       : 'Active';
 
   return (
@@ -109,7 +141,7 @@ export function OperatorDrawer({
             type="button"
             className="btn btn-primary btn-xs"
             onClick={onPanicHide}
-            title="Hide drawer and private engine arrows immediately (Esc)"
+            title="Hide drawer and private arrows immediately (Esc)"
           >
             <EyeOffIcon size={13} />
             <span>Panic (Esc)</span>
@@ -133,7 +165,7 @@ export function OperatorDrawer({
           className={`seg-tab ${tab === 'rules' ? 'is-active' : ''}`}
           onClick={() => setTab('rules')}
         >
-          Rules
+          Cheats
         </button>
         <button
           type="button"
@@ -151,7 +183,7 @@ export function OperatorDrawer({
           className={`seg-tab ${tab === 'mind' ? 'is-active' : ''}`}
           onClick={() => setTab('mind')}
         >
-          Mind
+          Trolls
         </button>
         <button
           type="button"
@@ -160,7 +192,7 @@ export function OperatorDrawer({
           className={`seg-tab ${tab === 'engine' ? 'is-active' : ''}`}
           onClick={() => setTab('engine')}
         >
-          Arbiter
+          Engine
         </button>
       </div>
 
@@ -188,7 +220,7 @@ export function OperatorDrawer({
                   onSetArmed(armed?.type === 'double_move' ? null : { type: 'double_move' })
                 }
               >
-                <BoltIcon size={15} />
+                <BoltIcon size={14} />
                 <span>Double Move</span>
               </button>
 
@@ -199,8 +231,8 @@ export function OperatorDrawer({
                   onSetArmed(armed?.type === 'teleport' ? null : { type: 'teleport' })
                 }
               >
-                <BoltIcon size={15} />
-                <span>Teleport Piece</span>
+                <BoltIcon size={14} />
+                <span>Teleport Any Piece</span>
               </button>
 
               <button
@@ -210,23 +242,74 @@ export function OperatorDrawer({
                   onSetArmed(armed?.type === 'steal_piece' ? null : { type: 'steal_piece' })
                 }
               >
-                <BoltIcon size={15} />
+                <BoltIcon size={14} />
                 <span>Steal Enemy Move</span>
               </button>
 
               <button
                 type="button"
-                className="op-cell"
-                onClick={onForceUndoOpponent}
+                className={`op-cell ${armed?.type === 'snipe' ? 'is-armed' : ''}`}
+                onClick={() =>
+                  onSetArmed(armed?.type === 'snipe' ? null : { type: 'snipe' })
+                }
               >
-                <UndoIcon size={15} />
-                <span>Veto Last Move</span>
+                <BoltIcon size={14} />
+                <span>Snipe Enemy Piece</span>
+              </button>
+
+              <button
+                type="button"
+                className={`op-cell ${armed?.type === 'clone' ? 'is-armed' : ''}`}
+                onClick={() =>
+                  onSetArmed(armed?.type === 'clone' ? null : { type: 'clone' })
+                }
+              >
+                <BoltIcon size={14} />
+                <span>Clone Own Piece</span>
+              </button>
+
+              <button
+                type="button"
+                className={`op-cell ${armed?.type === 'swap' ? 'is-armed' : ''}`}
+                onClick={() =>
+                  onSetArmed(armed?.type === 'swap' ? null : { type: 'swap' })
+                }
+              >
+                <BoltIcon size={14} />
+                <span>Swap 2 Pieces</span>
+              </button>
+
+              <button
+                type="button"
+                className="op-cell"
+                onClick={onSpawnShieldWall}
+              >
+                <ShieldIcon size={14} />
+                <span>King Pawn Wall</span>
+              </button>
+
+              <button
+                type="button"
+                className="op-cell"
+                onClick={onScrambleOpponent}
+              >
+                <BoltIcon size={14} />
+                <span>Scramble Back Rank</span>
               </button>
             </div>
 
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm op-full-btn"
+              onClick={onForceUndoOpponent}
+            >
+              <UndoIcon size={14} />
+              <span>Veto / Undo Opponent Move</span>
+            </button>
+
             <div className="op-subpanel">
               <div className="op-subhead">
-                <span>Transform own piece into</span>
+                <span>Morph piece into</span>
                 <div className="piece-pill-row">
                   {(['q', 'r', 'n', 'b'] as const).map((p) => (
                     <button
@@ -253,15 +336,13 @@ export function OperatorDrawer({
               >
                 {armed?.type === 'transform'
                   ? 'Click your piece on board…'
-                  : `Arm Transform → ${transformChoice.toUpperCase()}`}
+                  : `Arm Morph → ${transformChoice.toUpperCase()}`}
               </button>
             </div>
 
             <div className="op-subpanel">
               <div className="op-subhead">
-                <span>
-                  Resurrect piece ({capturedOwnPieces.length} lost)
-                </span>
+                <span>Revive piece ({capturedOwnPieces.length} lost)</span>
                 <div className="piece-pill-row">
                   {(['q', 'r', 'n', 'b', 'p'] as const).map((p) => (
                     <button
@@ -288,7 +369,7 @@ export function OperatorDrawer({
               >
                 {armed?.type === 'resurrect'
                   ? 'Click empty square on board…'
-                  : `Arm Resurrect ${resurrectChoice.toUpperCase()}`}
+                  : `Arm Revive ${resurrectChoice.toUpperCase()}`}
               </button>
             </div>
           </div>
@@ -298,29 +379,37 @@ export function OperatorDrawer({
           <div className="op-section">
             <div className="op-grid">
               <button type="button" className="op-cell" onClick={() => onStealTime(15)}>
-                <ClockIcon size={15} />
+                <ClockIcon size={14} />
                 <span>Steal +15s</span>
               </button>
               <button type="button" className="op-cell" onClick={() => onStealTime(30)}>
-                <ClockIcon size={15} />
+                <ClockIcon size={14} />
                 <span>Steal +30s</span>
               </button>
               <button type="button" className="op-cell" onClick={onHalveOpponentTime}>
-                <ClockIcon size={15} />
+                <ClockIcon size={14} />
                 <span>Halve Friend Clock</span>
               </button>
               <button type="button" className="op-cell" onClick={onSkipOpponentTurn}>
-                <BoltIcon size={15} />
+                <BoltIcon size={14} />
                 <span>Skip Friend Turn</span>
               </button>
             </div>
 
             <button
               type="button"
+              className={`btn op-full-btn ${opponentClockSpeed > 1 ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={onToggleDoubleDrain}
+            >
+              {opponentClockSpeed > 1 ? '2x Drain Active on Friend' : '2x Speed Up Friend Clock'}
+            </button>
+
+            <button
+              type="button"
               className={`btn op-full-btn ${clockFrozen ? 'btn-primary' : 'btn-secondary'}`}
               onClick={onToggleFreezeClock}
             >
-              {clockFrozen ? 'My Clock Frozen (Click to Unfreeze)' : 'Freeze My Clock'}
+              {clockFrozen ? 'My Clock Frozen (Unfreeze)' : 'Freeze My Clock'}
             </button>
           </div>
         )}
@@ -329,7 +418,7 @@ export function OperatorDrawer({
           <div className="op-section">
             {!isMultiplayer && (
               <p className="muted-copy">
-                Mind-game overlays target your friend&apos;s browser in online rooms.
+                Visual trolls target your friend&apos;s screen in online matches.
               </p>
             )}
             <div className="op-grid">
@@ -344,7 +433,7 @@ export function OperatorDrawer({
                   )
                 }
               >
-                <EyeOffIcon size={15} />
+                <EyeOffIcon size={14} />
                 <span>Disguise as Pawn</span>
               </button>
 
@@ -353,15 +442,32 @@ export function OperatorDrawer({
                 className={`op-cell ${cursesSent.boardFlippedForced ? 'is-armed' : ''}`}
                 onClick={onToggleFlipOpponent}
               >
-                <BoltIcon size={15} />
-                <span>
-                  {cursesSent.boardFlippedForced ? 'Unflip Friend Board' : 'Flip Friend Board'}
-                </span>
+                <BoltIcon size={14} />
+                <span>{cursesSent.boardFlippedForced ? 'Unflip Board' : 'Flip Friend Board'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`op-cell ${cursesSent.drunkPieces ? 'is-armed' : ''}`}
+                onClick={onToggleDrunkPieces}
+              >
+                <BoltIcon size={14} />
+                <span>{cursesSent.drunkPieces ? 'Fix Upside-Down' : 'Drunk Pieces (180°)'}</span>
+              </button>
+
+              <button type="button" className="op-cell" onClick={onTriggerGhostPieces}>
+                <EyeOffIcon size={14} />
+                <span>Ghost Pieces (6s)</span>
               </button>
 
               <button type="button" className="op-cell" onClick={onTriggerFakeLag}>
-                <ClockIcon size={15} />
+                <ClockIcon size={14} />
                 <span>Fake Lag (3.5s)</span>
+              </button>
+
+              <button type="button" className="op-cell" onClick={onTriggerFakeVictory}>
+                <BoltIcon size={14} />
+                <span>Fake Checkmate Popup</span>
               </button>
 
               <button
@@ -369,7 +475,7 @@ export function OperatorDrawer({
                 className={`op-cell ${cursesSent.butterfingers ? 'is-armed' : ''}`}
                 onClick={onTriggerButterfingers}
               >
-                <BoltIcon size={15} />
+                <BoltIcon size={14} />
                 <span>Butterfingers Hover</span>
               </button>
 
@@ -380,15 +486,19 @@ export function OperatorDrawer({
                   onSetArmed(armed?.type === 'gaslight' ? null : { type: 'gaslight' })
                 }
               >
-                <BoltIcon size={15} />
+                <BoltIcon size={14} />
                 <span>Fake Last-Move</span>
               </button>
-
-              <button type="button" className="op-cell" onClick={onClearCurses}>
-                <UndoIcon size={15} />
-                <span>Clear All Illusions</span>
-              </button>
             </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm op-full-btn"
+              onClick={onClearCurses}
+            >
+              <UndoIcon size={14} />
+              <span>Clear All Visual Trolls</span>
+            </button>
           </div>
         )}
 
@@ -396,14 +506,22 @@ export function OperatorDrawer({
           <div className="op-section">
             <div className="eval-readout-card">
               <div className="eval-row">
-                <span className="muted-copy">Private Arbiter Eval</span>
+                <span className="muted-copy">Engine Eval</span>
                 <strong className="mono-val">{evalDisplay}</strong>
               </div>
               <div className="eval-row">
-                <span className="muted-copy">Recommended line</span>
+                <span className="muted-copy">Best Move</span>
                 <strong className="mono-val">{hintMoveLabel || '—'}</strong>
               </div>
             </div>
+
+            <button
+              type="button"
+              className={`btn op-full-btn ${showEvalBar ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={onToggleEvalBar}
+            >
+              {showEvalBar ? 'Hide Live Eval Bar' : 'Show Live Eval Bar'}
+            </button>
 
             <button
               type="button"
@@ -419,7 +537,17 @@ export function OperatorDrawer({
               onClick={onPlayEngineMove}
               disabled={!hintMoveLabel}
             >
-              Auto-Play Best Move Now
+              Auto-Play Best Move
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary op-full-btn"
+              onClick={onForceOpponentBlunder}
+              disabled={!isOpponentTurn}
+              title="Only usable on your opponent's turn"
+            >
+              Sabotage: Force Friend Blunder
             </button>
           </div>
         )}

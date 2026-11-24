@@ -1,304 +1,359 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-24T20:00:53Z",
-  "title": "Design System: Vesper64",
-  "seededFrom": {
-    "id": "variable-font-specimen",
-    "name": "Foundry Type Specimen",
-    "seed": "bc700e1f9e7eaba9"
-  },
+  "generatedAt": "2026-11-24T20:37:48Z",
+  "title": "Design System: ChessArena",
   "extensions": {
     "colorMeta": {
-      "foundry-crimson": {
+      "tournament-green": {
         "role": "primary",
-        "displayName": "Foundry Crimson",
-        "canonical": "#d91642",
+        "displayName": "Tournament Green",
+        "canonical": "#81b64c",
         "tonalRamp": [
-          "oklch(16% 0.098 18.1)",
-          "oklch(26% 0.157 18.1)",
-          "oklch(38% 0.219 18.1)",
-          "oklch(50% 0.219 18.1)",
-          "oklch(62% 0.219 18.1)",
-          "oklch(74% 0.219 18.1)",
-          "oklch(85% 0.157 18.1)",
-          "oklch(95% 0.098 18.1)"
+          "oklch(16% 0.067 131.5)",
+          "oklch(26% 0.107 131.5)",
+          "oklch(38% 0.148 131.5)",
+          "oklch(50% 0.148 131.5)",
+          "oklch(62% 0.148 131.5)",
+          "oklch(74% 0.148 131.5)",
+          "oklch(85% 0.107 131.5)",
+          "oklch(95% 0.067 131.5)"
         ]
       },
-      "foundry-crimson-deep": {
+      "tournament-green-hover": {
         "role": "primary",
-        "displayName": "Foundry Crimson Deep",
-        "canonical": "#b81137",
+        "displayName": "Tournament Green Hover",
+        "canonical": "#95cc5a",
         "tonalRamp": [
-          "oklch(16% 0.087 18.0)",
-          "oklch(26% 0.139 18.0)",
-          "oklch(38% 0.193 18.0)",
-          "oklch(50% 0.193 18.0)",
-          "oklch(62% 0.193 18.0)",
-          "oklch(74% 0.193 18.0)",
-          "oklch(85% 0.139 18.0)",
-          "oklch(95% 0.087 18.0)"
+          "oklch(16% 0.07 130.7)",
+          "oklch(26% 0.112 130.7)",
+          "oklch(38% 0.156 130.7)",
+          "oklch(50% 0.156 130.7)",
+          "oklch(62% 0.156 130.7)",
+          "oklch(74% 0.156 130.7)",
+          "oklch(85% 0.112 130.7)",
+          "oklch(95% 0.07 130.7)"
         ]
       },
-      "crimson-signal": {
+      "tournament-green-edge": {
         "role": "primary",
-        "displayName": "Crimson Signal",
-        "canonical": "#ff4d73",
+        "displayName": "Tournament Green Edge",
+        "canonical": "#45752a",
         "tonalRamp": [
-          "oklch(16% 0.096 12.6)",
-          "oklch(26% 0.154 12.6)",
-          "oklch(38% 0.213 12.6)",
-          "oklch(50% 0.213 12.6)",
-          "oklch(62% 0.213 12.6)",
-          "oklch(74% 0.213 12.6)",
-          "oklch(85% 0.154 12.6)",
-          "oklch(95% 0.096 12.6)"
+          "oklch(16% 0.053 136.0)",
+          "oklch(26% 0.085 136.0)",
+          "oklch(38% 0.118 136.0)",
+          "oklch(50% 0.118 136.0)",
+          "oklch(62% 0.118 136.0)",
+          "oklch(74% 0.118 136.0)",
+          "oklch(85% 0.085 136.0)",
+          "oklch(95% 0.053 136.0)"
         ]
       },
-      "void-slate": {
+      "charcoal-ground": {
         "role": "neutral",
-        "displayName": "Void Slate",
-        "canonical": "#101216",
+        "displayName": "Charcoal Ground",
+        "canonical": "#302e2b",
         "tonalRamp": [
-          "oklch(16% 0.004 264.3)",
-          "oklch(26% 0.006 264.3)",
-          "oklch(38% 0.009 264.3)",
-          "oklch(50% 0.009 264.3)",
-          "oklch(62% 0.009 264.3)",
-          "oklch(74% 0.009 264.3)",
-          "oklch(85% 0.006 264.3)",
-          "oklch(95% 0.004 264.3)"
+          "oklch(16% 0.003 78.2)",
+          "oklch(26% 0.004 78.2)",
+          "oklch(38% 0.006 78.2)",
+          "oklch(50% 0.006 78.2)",
+          "oklch(62% 0.006 78.2)",
+          "oklch(74% 0.006 78.2)",
+          "oklch(85% 0.004 78.2)",
+          "oklch(95% 0.003 78.2)"
         ]
       },
-      "rail-slate": {
+      "walnut-nav": {
         "role": "neutral",
-        "displayName": "Rail Slate",
-        "canonical": "#151921",
+        "displayName": "Walnut Nav",
+        "canonical": "#262522",
         "tonalRamp": [
-          "oklch(16% 0.008 264.1)",
-          "oklch(26% 0.012 264.1)",
-          "oklch(38% 0.017 264.1)",
-          "oklch(50% 0.017 264.1)",
-          "oklch(62% 0.017 264.1)",
-          "oklch(74% 0.017 264.1)",
-          "oklch(85% 0.012 264.1)",
-          "oklch(95% 0.008 264.1)"
+          "oklch(16% 0.003 91.6)",
+          "oklch(26% 0.004 91.6)",
+          "oklch(38% 0.006 91.6)",
+          "oklch(50% 0.006 91.6)",
+          "oklch(62% 0.006 91.6)",
+          "oklch(74% 0.006 91.6)",
+          "oklch(85% 0.004 91.6)",
+          "oklch(95% 0.003 91.6)"
         ]
       },
-      "elevated-slate": {
+      "espresso-panel": {
         "role": "neutral",
-        "displayName": "Elevated Slate",
-        "canonical": "#1c222d",
+        "displayName": "Espresso Panel",
+        "canonical": "#262421",
         "tonalRamp": [
-          "oklch(16% 0.01 262.4)",
-          "oklch(26% 0.016 262.4)",
-          "oklch(38% 0.023 262.4)",
-          "oklch(50% 0.023 262.4)",
-          "oklch(62% 0.023 262.4)",
-          "oklch(74% 0.023 262.4)",
-          "oklch(85% 0.016 262.4)",
-          "oklch(95% 0.01 262.4)"
+          "oklch(16% 0.003 78.2)",
+          "oklch(26% 0.005 78.2)",
+          "oklch(38% 0.006 78.2)",
+          "oklch(50% 0.006 78.2)",
+          "oklch(62% 0.006 78.2)",
+          "oklch(74% 0.006 78.2)",
+          "oklch(85% 0.005 78.2)",
+          "oklch(95% 0.003 78.2)"
         ]
       },
-      "hover-slate": {
+      "obsidian-well": {
         "role": "neutral",
-        "displayName": "Hover Slate",
-        "canonical": "#242b38",
+        "displayName": "Obsidian Well",
+        "canonical": "#21201d",
         "tonalRamp": [
-          "oklch(16% 0.012 262.7)",
-          "oklch(26% 0.019 262.7)",
-          "oklch(38% 0.026 262.7)",
-          "oklch(50% 0.026 262.7)",
-          "oklch(62% 0.026 262.7)",
-          "oklch(74% 0.026 262.7)",
-          "oklch(85% 0.019 262.7)",
-          "oklch(95% 0.012 262.7)"
+          "oklch(16% 0.003 91.6)",
+          "oklch(26% 0.004 91.6)",
+          "oklch(38% 0.006 91.6)",
+          "oklch(50% 0.006 91.6)",
+          "oklch(62% 0.006 91.6)",
+          "oklch(74% 0.006 91.6)",
+          "oklch(85% 0.004 91.6)",
+          "oklch(95% 0.003 91.6)"
         ]
       },
-      "hairline-slate": {
+      "umber-elevated": {
         "role": "neutral",
-        "displayName": "Hairline Slate",
-        "canonical": "#262c38",
+        "displayName": "Umber Elevated",
+        "canonical": "#363430",
         "tonalRamp": [
-          "oklch(16% 0.011 264.1)",
-          "oklch(26% 0.017 264.1)",
-          "oklch(38% 0.024 264.1)",
-          "oklch(50% 0.024 264.1)",
-          "oklch(62% 0.024 264.1)",
-          "oklch(74% 0.024 264.1)",
-          "oklch(85% 0.017 264.1)",
-          "oklch(95% 0.011 264.1)"
+          "oklch(16% 0.003 84.6)",
+          "oklch(26% 0.005 84.6)",
+          "oklch(38% 0.007 84.6)",
+          "oklch(50% 0.007 84.6)",
+          "oklch(62% 0.007 84.6)",
+          "oklch(74% 0.007 84.6)",
+          "oklch(85% 0.005 84.6)",
+          "oklch(95% 0.003 84.6)"
+        ]
+      },
+      "umber-hover": {
+        "role": "neutral",
+        "displayName": "Umber Hover",
+        "canonical": "#403e3a",
+        "tonalRamp": [
+          "oklch(16% 0.003 84.6)",
+          "oklch(26% 0.005 84.6)",
+          "oklch(38% 0.007 84.6)",
+          "oklch(50% 0.007 84.6)",
+          "oklch(62% 0.007 84.6)",
+          "oklch(74% 0.007 84.6)",
+          "oklch(85% 0.005 84.6)",
+          "oklch(95% 0.003 84.6)"
+        ]
+      },
+      "hairline-umber": {
+        "role": "neutral",
+        "displayName": "Hairline Umber",
+        "canonical": "#3c3a37",
+        "tonalRamp": [
+          "oklch(16% 0.003 78.3)",
+          "oklch(26% 0.004 78.3)",
+          "oklch(38% 0.006 78.3)",
+          "oklch(50% 0.006 78.3)",
+          "oklch(62% 0.006 78.3)",
+          "oklch(74% 0.006 78.3)",
+          "oklch(85% 0.004 78.3)",
+          "oklch(95% 0.003 78.3)"
         ]
       },
       "hairline-strong": {
         "role": "neutral",
         "displayName": "Hairline Strong",
-        "canonical": "#343d4d",
+        "canonical": "#4d4a46",
         "tonalRamp": [
-          "oklch(16% 0.014 261.9)",
-          "oklch(26% 0.022 261.9)",
-          "oklch(38% 0.03 261.9)",
-          "oklch(50% 0.03 261.9)",
-          "oklch(62% 0.03 261.9)",
-          "oklch(74% 0.03 261.9)",
-          "oklch(85% 0.022 261.9)",
-          "oklch(95% 0.014 261.9)"
+          "oklch(16% 0.003 75.3)",
+          "oklch(26% 0.006 75.3)",
+          "oklch(38% 0.008 75.3)",
+          "oklch(50% 0.008 75.3)",
+          "oklch(62% 0.008 75.3)",
+          "oklch(74% 0.008 75.3)",
+          "oklch(85% 0.006 75.3)",
+          "oklch(95% 0.003 75.3)"
         ]
       },
-      "alabaster-ink": {
+      "pure-chalk-ink": {
         "role": "neutral",
-        "displayName": "Alabaster Ink",
-        "canonical": "#f3f4f6",
+        "displayName": "Pure Chalk Ink",
+        "canonical": "#ffffff",
         "tonalRamp": [
-          "oklch(16% 0.001 264.5)",
-          "oklch(26% 0.002 264.5)",
-          "oklch(38% 0.003 264.5)",
-          "oklch(50% 0.003 264.5)",
-          "oklch(62% 0.003 264.5)",
-          "oklch(74% 0.003 264.5)",
-          "oklch(85% 0.002 264.5)",
-          "oklch(95% 0.001 264.5)"
+          "oklch(16% 0.0 0.0)",
+          "oklch(26% 0.0 0.0)",
+          "oklch(38% 0.0 0.0)",
+          "oklch(50% 0.0 0.0)",
+          "oklch(62% 0.0 0.0)",
+          "oklch(74% 0.0 0.0)",
+          "oklch(85% 0.0 0.0)",
+          "oklch(95% 0.0 0.0)"
         ]
       },
-      "muted-slate-ink": {
+      "stone-muted-ink": {
         "role": "neutral",
-        "displayName": "Muted Slate Ink",
-        "canonical": "#94a3b8",
+        "displayName": "Stone Muted Ink",
+        "canonical": "#b8b6b2",
         "tonalRamp": [
-          "oklch(16% 0.016 256.8)",
-          "oklch(26% 0.025 256.8)",
-          "oklch(38% 0.035 256.8)",
-          "oklch(50% 0.035 256.8)",
-          "oklch(62% 0.035 256.8)",
-          "oklch(74% 0.035 256.8)",
-          "oklch(85% 0.025 256.8)",
-          "oklch(95% 0.016 256.8)"
+          "oklch(16% 0.003 84.6)",
+          "oklch(26% 0.004 84.6)",
+          "oklch(38% 0.006 84.6)",
+          "oklch(50% 0.006 84.6)",
+          "oklch(62% 0.006 84.6)",
+          "oklch(74% 0.006 84.6)",
+          "oklch(85% 0.004 84.6)",
+          "oklch(95% 0.003 84.6)"
         ]
       },
-      "board-light": {
+      "board-cream": {
         "role": "neutral",
-        "displayName": "Board Light Square",
-        "canonical": "#e5e7ec",
+        "displayName": "Board Cream",
+        "canonical": "#eeeed2",
         "tonalRamp": [
-          "oklch(16% 0.003 268.5)",
-          "oklch(26% 0.005 268.5)",
-          "oklch(38% 0.007 268.5)",
-          "oklch(50% 0.007 268.5)",
-          "oklch(62% 0.007 268.5)",
-          "oklch(74% 0.007 268.5)",
-          "oklch(85% 0.005 268.5)",
-          "oklch(95% 0.003 268.5)"
+          "oklch(16% 0.017 107.1)",
+          "oklch(26% 0.027 107.1)",
+          "oklch(38% 0.037 107.1)",
+          "oklch(50% 0.037 107.1)",
+          "oklch(62% 0.037 107.1)",
+          "oklch(74% 0.037 107.1)",
+          "oklch(85% 0.027 107.1)",
+          "oklch(95% 0.017 107.1)"
         ]
       },
-      "board-dark": {
+      "board-sage": {
         "role": "neutral",
-        "displayName": "Board Dark Square",
-        "canonical": "#343c4a",
+        "displayName": "Board Sage",
+        "canonical": "#769656",
         "tonalRamp": [
-          "oklch(16% 0.012 261.6)",
-          "oklch(26% 0.019 261.6)",
-          "oklch(38% 0.027 261.6)",
-          "oklch(50% 0.027 261.6)",
-          "oklch(62% 0.027 261.6)",
-          "oklch(74% 0.027 261.6)",
-          "oklch(85% 0.019 261.6)",
-          "oklch(95% 0.012 261.6)"
+          "oklch(16% 0.044 130.4)",
+          "oklch(26% 0.07 130.4)",
+          "oklch(38% 0.097 130.4)",
+          "oklch(50% 0.097 130.4)",
+          "oklch(62% 0.097 130.4)",
+          "oklch(74% 0.097 130.4)",
+          "oklch(85% 0.07 130.4)",
+          "oklch(95% 0.044 130.4)"
         ]
       },
-      "live-emerald": {
+      "board-last-light": {
+        "role": "neutral",
+        "displayName": "Board Last Light",
+        "canonical": "#f6f682",
+        "tonalRamp": [
+          "oklch(16% 0.062 108.8)",
+          "oklch(26% 0.1 108.8)",
+          "oklch(38% 0.139 108.8)",
+          "oklch(50% 0.139 108.8)",
+          "oklch(62% 0.139 108.8)",
+          "oklch(74% 0.139 108.8)",
+          "oklch(85% 0.1 108.8)",
+          "oklch(95% 0.062 108.8)"
+        ]
+      },
+      "board-last-dark": {
+        "role": "neutral",
+        "displayName": "Board Last Dark",
+        "canonical": "#baca44",
+        "tonalRamp": [
+          "oklch(16% 0.07 115.9)",
+          "oklch(26% 0.112 115.9)",
+          "oklch(38% 0.156 115.9)",
+          "oklch(50% 0.156 115.9)",
+          "oklch(62% 0.156 115.9)",
+          "oklch(74% 0.156 115.9)",
+          "oklch(85% 0.112 115.9)",
+          "oklch(95% 0.07 115.9)"
+        ]
+      },
+      "crimson-alert": {
         "role": "semantic",
-        "displayName": "Live Emerald",
-        "canonical": "#22c55e",
+        "displayName": "Crimson Alert",
+        "canonical": "#e03c3c",
         "tonalRamp": [
-          "oklch(16% 0.086 149.6)",
-          "oklch(26% 0.138 149.6)",
-          "oklch(38% 0.192 149.6)",
-          "oklch(50% 0.192 149.6)",
-          "oklch(62% 0.192 149.6)",
-          "oklch(74% 0.192 149.6)",
-          "oklch(85% 0.138 149.6)",
-          "oklch(95% 0.086 149.6)"
+          "oklch(16% 0.09 25.6)",
+          "oklch(26% 0.145 25.6)",
+          "oklch(38% 0.201 25.6)",
+          "oklch(50% 0.201 25.6)",
+          "oklch(62% 0.201 25.6)",
+          "oklch(74% 0.201 25.6)",
+          "oklch(85% 0.145 25.6)",
+          "oklch(95% 0.09 25.6)"
         ]
       },
-      "waiting-amber": {
+      "amber-wait": {
         "role": "semantic",
-        "displayName": "Waiting Amber",
-        "canonical": "#f59e0b",
+        "displayName": "Amber Wait",
+        "canonical": "#e59c2e",
         "tonalRamp": [
-          "oklch(16% 0.074 70.1)",
-          "oklch(26% 0.119 70.1)",
-          "oklch(38% 0.165 70.1)",
-          "oklch(50% 0.165 70.1)",
-          "oklch(62% 0.165 70.1)",
-          "oklch(74% 0.165 70.1)",
-          "oklch(85% 0.119 70.1)",
-          "oklch(95% 0.074 70.1)"
+          "oklch(16% 0.065 72.0)",
+          "oklch(26% 0.105 72.0)",
+          "oklch(38% 0.146 72.0)",
+          "oklch(50% 0.146 72.0)",
+          "oklch(62% 0.146 72.0)",
+          "oklch(74% 0.146 72.0)",
+          "oklch(85% 0.105 72.0)",
+          "oklch(95% 0.065 72.0)"
         ]
       }
     },
     "typographyMeta": {
-      "display": {
-        "displayName": "Display Specimen",
-        "style": "normal",
-        "purpose": "Oversized tabular countdown clocks shifting live from wght 520 (standby) to 780 (active) and 880 (<20s urgent)."
-      },
       "headline": {
         "displayName": "Headline",
         "style": "normal",
-        "purpose": "Left-rail setup section heading (Online Match Room)."
+        "purpose": "Right-sidebar Play Chess heading and Invite Gate heading."
       },
       "title": {
         "displayName": "Title",
         "style": "normal",
-        "purpose": "Vesper64 brand wordmark and modal dialog titles."
+        "purpose": "ChessArena brand wordmark and modal headers."
       },
       "body": {
         "displayName": "Body",
         "style": "normal",
-        "purpose": "Base copy, empty ledger guidance, and primary UI controls."
+        "purpose": "Primary prose, navigation items, player names, inputs, and buttons."
       },
       "label": {
         "displayName": "Label",
         "style": "normal",
-        "purpose": "Form field labels, segmented switches, compact buttons, and operator tiles."
+        "purpose": "Field labels, segmented tabs, operator action tiles, chat lines, and alerts."
+      },
+      "clock": {
+        "displayName": "Digital Clock",
+        "style": "normal",
+        "purpose": "Tabular countdown pills switching from standby dark to white on active turn."
       },
       "mono": {
-        "displayName": "Mono Telemetry",
+        "displayName": "Mono Ledger",
         "style": "normal",
-        "purpose": "Tabular algebraic move notation, room pills, ply strips, time presets, and coordinate rails."
+        "purpose": "Algebraic SAN move columns, time-control presets, badges, and room URLs."
       }
     },
     "shadows": [],
     "motion": [
       {
-        "name": "clock-weight-shift",
-        "value": "font-variation-settings 200ms ease, color 150ms ease",
-        "purpose": "Modulates clock stroke weight (520 -> 780 -> 880) and ink on turn transfer or low-time urgency."
+        "name": "nav-hover",
+        "value": "background 120ms ease, color 120ms ease",
+        "purpose": "Smooth hover highlight across left navigation rail items."
       },
       {
-        "name": "clock-axis-glide",
-        "value": "left 200ms ease, background 150ms ease",
-        "purpose": "Slides the 5px clock axis dot across the 1px hairline rule on active turn."
+        "name": "button-press",
+        "value": "background 120ms ease, transform 70ms ease",
+        "purpose": "Snappy tactile hover and 1px downward press feedback on buttons."
       },
       {
-        "name": "control-hover",
-        "value": "background 150ms ease, border-color 150ms ease, transform 80ms ease",
-        "purpose": "Tactile hover and 1px downward active press on buttons, tabs, and operator tiles."
+        "name": "eval-fill-glide",
+        "value": "height 220ms ease",
+        "purpose": "Vertical fill interpolation inside the private engine evaluation bar."
       },
       {
         "name": "piece-move",
-        "value": "transform 140ms cubic-bezier(0.22, 1, 0.36, 1)",
-        "purpose": "Snappy piece wrapper translation and hover dodge response."
+        "value": "transform 140ms ease",
+        "purpose": "Piece wrapper displacement and hover dodge transition."
       },
       {
         "name": "spinner-rotate",
-        "value": "vesper-spin 0.8s linear infinite",
-        "purpose": "Continuous arbiter sync ring rotation, collapsed to 0.01ms under prefers-reduced-motion."
+        "value": "chesscom-spin 0.8s linear infinite",
+        "purpose": "Waiting/reconnecting spinner rotation, collapsed to 0.01ms under prefers-reduced-motion."
       }
     ],
     "breakpoints": [
       {
-        "name": "tablet-drawer-overlay",
-        "value": "max-width: 1140px"
+        "name": "compact-top-nav",
+        "value": "max-width: 1040px"
       },
       {
         "name": "mobile-stack",
@@ -308,135 +363,134 @@
   },
   "components": [
     {
-      "name": "Primary Button",
+      "name": "Primary CTA Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Primary arena action for room creation and panic hide.",
-      "html": "<button type=\"button\" class=\"ds-btn ds-btn-primary\">Create Invite Link</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-md, 3px); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 150ms ease, border-color 150ms ease, transform 80ms ease; } .ds-btn-primary { background: var(--accent, #d91642); border: 1px solid var(--accent, #d91642); color: #ffffff; } .ds-btn-primary:hover { background: var(--accent-hover, #b81137); border-color: var(--accent-hover, #b81137); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: 2px; }"
+      "description": "Beveled Chess.com green primary CTA for room creation, invite join, and rematch.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-green ds-create-room-btn\">Play a Friend (Create Link)</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 14px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn-green { background: var(--green, #81b64c); border-color: var(--green-edge, #45752a); border-bottom-width: 3px; color: #ffffff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); } .ds-create-room-btn { height: 44px; font-size: 15px; } .ds-btn-green:hover { background: var(--green-hover, #95cc5a); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Board controls, join submit, and account trigger.",
-      "html": "<button type=\"button\" class=\"ds-btn ds-btn-secondary\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Flip Board</span></button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-md, 3px); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 150ms ease, border-color 150ms ease, transform 80ms ease; } .ds-btn-secondary { background: var(--bg-elevated, #1c222d); border: 1px solid var(--hairline-strong, #343d4d); color: var(--ink, #f3f4f6); } .ds-btn-secondary:hover { background: var(--bg-hover, #242b38); } .ds-btn-secondary:active { transform: translateY(1px); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: 2px; }"
+      "description": "Neutral umber control for Play vs Computer, Join, Flip, Draw, and Resign actions.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-secondary\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Flip</span></button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 12px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn:hover { background: var(--bg-hover, #403e3a); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
       "name": "Ghost Button",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "Subordinate dismissals, room leave, and cancel actions.",
+      "description": "Subordinate dismissals, room leave, decline, and compact meta actions.",
       "html": "<button type=\"button\" class=\"ds-btn ds-btn-ghost\">Leave</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-md, 3px); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 12px; font-weight: 600; cursor: pointer; transition: background 150ms ease, color 150ms ease, transform 80ms ease; } .ds-btn-ghost { background: transparent; border: 1px solid transparent; color: var(--ink-muted, #94a3b8); } .ds-btn-ghost:hover { background: var(--bg-elevated, #1c222d); color: var(--ink, #f3f4f6); } .ds-btn-ghost:active { transform: translateY(1px); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: 2px; }"
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid transparent; font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 11px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn-ghost { background: transparent; color: var(--ink-muted, #b8b6b2); } .ds-btn-ghost:hover { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
       "name": "Text Input",
       "kind": "input",
       "refersTo": "input-field",
-      "description": "Recessed void-slate field for room codes, chat, and optional auth.",
-      "html": "<input type=\"text\" class=\"ds-text-input\" placeholder=\"Paste code or room link\" aria-label=\"Room code or invite link\" />",
-      "css": ".ds-text-input { width: 100%; max-width: 280px; height: 36px; padding: 0 10px; border-radius: var(--radius-md, 3px); border: 1px solid var(--hairline-strong, #343d4d); background: var(--bg-void, #101216); color: var(--ink, #f3f4f6); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; caret-color: var(--accent, #d91642); } .ds-text-input::placeholder { color: var(--ink-muted, #94a3b8); } .ds-text-input:focus { outline: none; border-color: var(--accent, #d91642); }"
+      "description": "Recessed obsidian-well input for invite codes, match chat, and optional account forms.",
+      "html": "<input type=\"text\" class=\"ds-text-input\" placeholder=\"Paste invite code or link\" aria-label=\"Room code or invite link\" />",
+      "css": ".ds-text-input { width: 100%; max-width: 280px; height: 36px; padding: 0 10px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); background: var(--bg-deep, #21201d); color: var(--ink, #ffffff); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; caret-color: var(--green, #81b64c); } .ds-text-input::placeholder { color: var(--ink-muted, #b8b6b2); } .ds-text-input:focus { outline: none; border-color: var(--green, #81b64c); }"
     },
     {
-      "name": "Mode Navigation",
+      "name": "Left Navigation Rail",
       "kind": "nav",
-      "refersTo": "nav-tab",
-      "description": "Top-bar play mode switcher between Friend Room and Local Bot.",
-      "html": "<nav class=\"ds-mode-nav\" aria-label=\"Play mode\"><button type=\"button\" class=\"ds-nav-tab is-active\">Play Friend</button><button type=\"button\" class=\"ds-nav-tab\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M12 8V4\"/><circle cx=\"12\" cy=\"3\" r=\"1\"/><circle cx=\"9\" cy=\"14\" r=\"1\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"14\" r=\"1\" fill=\"currentColor\"/></svg><span>Play Bot</span></button></nav>",
-      "css": ".ds-mode-nav { display: inline-flex; align-items: center; gap: 4px; background: var(--bg-rail, #151921); padding: 6px; border-radius: var(--radius-sm, 2px); } .ds-nav-tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-sm, 2px); border: 1px solid transparent; background: transparent; color: var(--ink-muted, #94a3b8); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 150ms ease, color 150ms ease, border-color 150ms ease; } .ds-nav-tab:hover { color: var(--ink, #f3f4f6); background: var(--bg-elevated, #1c222d); } .ds-nav-tab.is-active { color: var(--ink, #f3f4f6); background: var(--bg-elevated, #1c222d); border-color: var(--hairline-strong, #343d4d); } .ds-nav-tab:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: 2px; }"
+      "refersTo": "nav-item",
+      "description": "Walnut left sidebar navigation with active highlight and green unread count badge.",
+      "html": "<nav class=\"ds-left-nav\" aria-label=\"Main navigation\"><button type=\"button\" class=\"ds-left-nav-item is-active\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Play</span></button><button type=\"button\" class=\"ds-left-nav-item\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><span>Friends</span><span class=\"ds-nav-count\">2</span></button></nav>",
+      "css": ".ds-left-nav { width: 152px; display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; background: var(--bg-nav, #262522); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-left-nav-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border-radius: var(--radius-sm, 4px); border: 0; background: transparent; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; transition: background 120ms ease, color 120ms ease; } .ds-left-nav-item:hover, .ds-left-nav-item.is-active { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-nav-count { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--green, #81b64c); color: #161512; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700; } .ds-left-nav-item:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
-      "name": "Room Telemetry Chip",
-      "kind": "chip",
-      "refersTo": "room-pill",
-      "description": "Live room status badge with tabular code, time control, and one-click invite copy.",
-      "html": "<div class=\"ds-room-pill\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span><span class=\"ds-mono-val\">ROOM K7Q4M2</span><span class=\"ds-room-divider\" aria-hidden=\"true\"></span><span class=\"ds-mono-muted\">5 + 0</span><button type=\"button\" class=\"ds-copy-btn\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"/></svg><span>Copy Link</span></button></div>",
-      "css": ".ds-room-pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; border-radius: var(--radius-md, 3px); background: var(--bg-void, #101216); border: 1px solid var(--hairline-strong, #343d4d); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 12px; color: var(--ink, #f3f4f6); } .ds-status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live, #22c55e); } .ds-mono-val { font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; } .ds-mono-muted { font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; color: var(--ink-muted, #94a3b8); } .ds-room-divider { width: 1px; height: 12px; background: var(--hairline-strong, #343d4d); } .ds-copy-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: var(--radius-sm, 2px); border: 1px solid var(--hairline, #262c38); background: var(--bg-elevated, #1c222d); color: var(--ink, #f3f4f6); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 150ms ease; } .ds-copy-btn:hover { background: var(--bg-hover, #242b38); } .ds-copy-btn:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: 2px; }"
-    },
-    {
-      "name": "Clock Specimen",
+      "name": "Player Clock Strip",
       "kind": "card",
-      "refersTo": "clock-specimen",
-      "description": "Variable-weight player countdown band with 1px sliding turn-axis indicator.",
-      "html": "<div class=\"ds-clock-stack\"><div class=\"ds-clock-specimen\"><div class=\"ds-clock-meta\"><span class=\"ds-player-name\">Opponent (Black)</span><span class=\"ds-turn-tag\">Standby</span></div><div class=\"ds-clock-axis\"><span class=\"ds-clock-axis-dot\"></span></div><div class=\"ds-clock-digits\">05:00</div></div><div class=\"ds-clock-specimen is-active\"><div class=\"ds-clock-meta\"><span class=\"ds-player-name\">Guest-172 (White)</span><span class=\"ds-turn-tag\">Your turn</span></div><div class=\"ds-clock-axis\"><span class=\"ds-clock-axis-dot\"></span></div><div class=\"ds-clock-digits\">04:58</div></div></div>",
-      "css": ".ds-clock-stack { width: 100%; max-width: 320px; border: 1px solid var(--hairline, #262c38); background: var(--bg-rail, #151921); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-clock-specimen { padding: 16px 24px; border-bottom: 1px solid var(--hairline, #262c38); display: flex; flex-direction: column; gap: 7px; } .ds-clock-specimen:last-child { border-bottom: 0; } .ds-clock-specimen.is-active { background: var(--bg-elevated, #1c222d); } .ds-clock-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .ds-player-name { font-size: 13px; font-weight: 600; color: var(--ink, #f3f4f6); } .ds-turn-tag { font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 600; color: var(--ink-muted, #94a3b8); } .ds-clock-specimen.is-active .ds-turn-tag { color: var(--accent-ink, #ff4d73); } .ds-clock-axis { position: relative; height: 1px; background: var(--hairline-strong, #343d4d); margin: 2px 0; } .ds-clock-specimen.is-active .ds-clock-axis { background: rgba(217, 22, 66, 0.55); } .ds-clock-axis-dot { position: absolute; top: 50%; left: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-muted, #94a3b8); transform: translateY(-50%); } .ds-clock-specimen.is-active .ds-clock-axis-dot { left: calc(100% - 5px); background: var(--accent-ink, #ff4d73); } .ds-clock-digits { font-size: 46px; line-height: 0.96; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; font-variation-settings: 'wght' 520; color: var(--ink-muted, #94a3b8); } .ds-clock-specimen.is-active .ds-clock-digits { color: var(--ink, #f3f4f6); font-variation-settings: 'wght' 780; }"
+      "refersTo": "clock-pill",
+      "description": "Player bar with 36px rounded avatar, name, and digital clock flipping white when running.",
+      "html": "<div class=\"ds-strip-stack\"><div class=\"ds-player-strip\"><div class=\"ds-player-left\"><div class=\"ds-avatar is-black\">O</div><div class=\"ds-player-info\"><span class=\"ds-player-name\">Opponent</span><span class=\"ds-adv-val\">+1</span></div></div><div class=\"ds-clock\">05:00</div></div><div class=\"ds-player-strip\"><div class=\"ds-player-left\"><div class=\"ds-avatar is-white\">G</div><div class=\"ds-player-info\"><span class=\"ds-player-name\">Guest-412</span></div></div><div class=\"ds-clock is-running\">04:56</div></div></div>",
+      "css": ".ds-strip-stack { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--bg-main, #302e2b); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-player-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; } .ds-player-left { display: flex; align-items: center; gap: 10px; min-width: 0; } .ds-avatar { width: 36px; height: 36px; border-radius: var(--radius-sm, 4px); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0; } .ds-avatar.is-white { background: var(--sq-light, #eeeed2); color: #262421; } .ds-avatar.is-black { background: #1f1e1b; color: #f3f3f3; border: 1px solid var(--hairline-strong, #4d4a46); } .ds-player-info { display: flex; flex-direction: column; gap: 2px; } .ds-player-name { font-size: 14px; font-weight: 700; color: var(--ink, #ffffff); } .ds-adv-val { font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700; color: var(--ink-muted, #b8b6b2); } .ds-clock { min-width: 104px; height: 38px; padding: 0 12px; border-radius: var(--radius-sm, 4px); background: var(--bg-deep, #21201d); color: var(--ink-muted, #b8b6b2); font-family: var(--font-mono, monospace); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: center; justify-content: flex-end; } .ds-clock.is-running { background: #ffffff; color: #21201d; }"
     },
     {
-      "name": "Time Control Matrix & Operator Cell",
+      "name": "Time Control Presets & Tabs",
+      "kind": "chip",
+      "refersTo": "preset-btn",
+      "description": "Segmented timer category bar paired with tabular preset selection buttons.",
+      "html": "<div class=\"ds-timer-wrap\"><div class=\"ds-seg-tabs\"><button type=\"button\" class=\"ds-seg-tab\">Bullet</button><button type=\"button\" class=\"ds-seg-tab is-active\">Blitz</button><button type=\"button\" class=\"ds-seg-tab\">Rapid</button></div><div class=\"ds-preset-grid\"><button type=\"button\" class=\"ds-preset-btn\">3 | 0</button><button type=\"button\" class=\"ds-preset-btn\">3 | 2</button><button type=\"button\" class=\"ds-preset-btn is-selected\">5 | 0</button></div></div>",
+      "css": ".ds-timer-wrap { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 6px; font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-seg-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; background: var(--bg-deep, #21201d); border-radius: var(--radius-sm, 4px); } .ds-seg-tab { padding: 6px; border: 0; border-radius: 3px; background: transparent; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; } .ds-seg-tab:hover { color: var(--ink, #ffffff); } .ds-seg-tab.is-active { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-preset-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; } .ds-preset-btn { padding: 7px 4px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); background: var(--bg-deep, #21201d); color: var(--ink-muted, #b8b6b2); font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 700; cursor: pointer; } .ds-preset-btn:hover { color: var(--ink, #ffffff); background: var(--bg-elevated, #363430); } .ds-preset-btn.is-selected { color: #ffffff; background: rgba(129, 182, 76, 0.25); border-color: var(--green, #81b64c); } .ds-seg-tab:focus-visible, .ds-preset-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
+    },
+    {
+      "name": "Match Meta & Move Ledger",
       "kind": "custom",
-      "refersTo": "preset-grid",
-      "description": "1px hairline-joined time control grid and concealed operator armed tile.",
-      "html": "<div class=\"ds-custom-stack\"><div class=\"ds-preset-grid\"><button type=\"button\" class=\"ds-preset-btn\">1 + 0</button><button type=\"button\" class=\"ds-preset-btn\">3 + 0</button><button type=\"button\" class=\"ds-preset-btn is-selected\">5 + 0</button></div><div class=\"ds-op-grid\"><button type=\"button\" class=\"ds-op-cell is-armed\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></svg><span>Double Move</span></button><button type=\"button\" class=\"ds-op-cell\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></svg><span>Teleport Piece</span></button></div></div>",
-      "css": ".ds-custom-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; } .ds-preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--hairline-strong, #343d4d); border: 1px solid var(--hairline-strong, #343d4d); border-radius: var(--radius-sm, 2px); overflow: hidden; } .ds-preset-btn { padding: 8px 6px; border: 0; background: var(--bg-void, #101216); color: var(--ink-muted, #94a3b8); font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 600; cursor: pointer; } .ds-preset-btn:hover { color: var(--ink, #f3f4f6); background: var(--bg-rail, #151921); } .ds-preset-btn.is-selected { color: #ffffff; background: rgba(217, 22, 66, 0.22); } .ds-op-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .ds-op-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; border-radius: var(--radius-md, 3px); border: 1px solid var(--hairline-strong, #343d4d); background: var(--bg-void, #101216); color: var(--ink, #f3f4f6); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; transition: border-color 140ms ease, background 140ms ease; } .ds-op-cell:hover { background: var(--bg-elevated, #1c222d); } .ds-op-cell.is-armed { border-color: var(--accent, #d91642); background: rgba(217, 22, 66, 0.14); } .ds-preset-btn:focus-visible, .ds-op-cell:focus-visible { outline: 2px solid var(--accent, #d91642); outline-offset: -2px; }"
+      "refersTo": "match-meta-bar",
+      "description": "Recessed match status bar and striped algebraic move pair ledger inside the right panel.",
+      "html": "<div class=\"ds-match-box\"><div class=\"ds-meta-bar\"><span class=\"ds-status-dot\" aria-hidden=\"true\"></span><strong>Standard</strong><span class=\"ds-mono-muted\">5 | 0</span></div><div class=\"ds-moves-panel\"><div class=\"ds-move-row\"><span class=\"ds-move-num\">1.</span><span class=\"ds-move-san\">e4</span><span class=\"ds-move-san\">c5</span></div><div class=\"ds-move-row\"><span class=\"ds-move-num\">2.</span><span class=\"ds-move-san\">Nf3</span><span class=\"ds-move-san\">d6</span></div></div></div>",
+      "css": ".ds-match-box { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--bg-panel, #262421); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-meta-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-deep, #21201d); border-radius: var(--radius-sm, 4px); font-size: 13px; color: var(--ink, #ffffff); } .ds-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live, #81b64c); flex-shrink: 0; } .ds-mono-muted { font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; color: var(--ink-muted, #b8b6b2); } .ds-moves-panel { background: var(--bg-deep, #21201d); border-radius: var(--radius-sm, 4px); padding: 6px; font-family: var(--font-mono, monospace); font-size: 12px; font-variant-numeric: tabular-nums; } .ds-move-row { display: grid; grid-template-columns: 36px 1fr 1fr; padding: 5px 8px; border-radius: 3px; } .ds-move-row:nth-child(even) { background: rgba(255, 255, 255, 0.03); } .ds-move-num { color: var(--ink-muted, #b8b6b2); } .ds-move-san { color: var(--ink, #ffffff); font-weight: 600; }"
     }
   ],
   "narrative": {
-    "northStar": "The Tournament Type Specimen",
-    "overview": "Vesper64 treats a competitive online chessboard like a calibrated Swiss foundry specimen rendered onto matte dark slate. Rather than surrounding the 64 squares with noisy chess-portal sidebars, drop shadows, or novelty gag chrome, every interface surface relies on crisp tonal steps (`#101216` through `#242b38`), `1px` structural hairlines, and oversized variable-weight countdown clocks whose stroke weight shifts live with turn ownership and low-time urgency.\n\nCover credibility is the aesthetic's first duty: guests and invited friends experience a focused, tournament-grade match room with zero onboarding friction and zero trace of concealed tooling. Authorized operator accounts unlock a structurally native right-hand drawer (`Operator Console`) that shares the exact same `1px`-ruled dark slate grammar, keeping tactical manipulation silent until summoned by hotkey or brand gesture.",
+    "northStar": "The Classic Club Table",
+    "overview": "ChessArena adopts a familiar three-column online chess layout modeled after Chess.com: a narrow dark-walnut left navigation rail (`#262522`), a centered warm-charcoal board stage (`#302e2b`) anchoring a classic cream-and-sage `8x8` board (`#eeeed2` / `#769656`) between compact player clock strips, and a dense dark-espresso action sidebar (`#262421`) that transitions cleanly from pre-match setup into live algebraic notation, board controls, and room chat.\n\nCover credibility remains foundational: guests join via link or code with zero onboarding wall and zero visible trace of hidden tooling. Authorized accounts retain silent access to the fixed right-edge `Operator Console` drawer via `Ctrl+Shift+T` / `Cmd+Shift+T` or triple-clicking the `ChessArena` mark, and dismiss all concealed state in one stroke with `Esc`.",
     "keyCharacteristics": [
-      "Matte dark-slate tonal layering (`#101216` void ground, `#151921` rails, `#1c222d` active specimens) with zero drop shadows across the entire application.",
-      "Variable-weight display countdown specimens in self-hosted `Figtree` shifting smoothly across `'wght' 520` (standby), `'wght' 780` (active turn), and `'wght' 880` (`<20s` urgency).",
-      "Hairline-ruled `1px` structural grid framing a central `1:1` alabaster-and-slate chessboard (`#e5e7ec` / `#343c4a`) with external `22px` coordinate rails.",
-      "Single foundry crimson accent (`#d91642`) reserved strictly for primary room creation, active turn telemetry, focus rings, capture targets, and armed operator states.",
-      "Self-hosted variable typography (`Figtree` `300–900` and `JetBrains Mono` `400–700`) with tabular numerals across clocks, algebraic move ledgers, and room codes."
+      "Warm charcoal-and-walnut tonal architecture (`#21201d` wells, `#262421` / `#262522` sidebars, `#302e2b` main arena, `#363430` interactive controls) with zero drop shadows across panels and cards.",
+      "Classic tournament cream-and-sage chessboard (`#eeeed2` / `#769656`) with inset corner rank/file coordinates, yellow-olive last-move highlights (`#f6f682` / `#baca44`), and translucent dark move dots/capture rings.",
+      "Tactile club-green primary CTAs (`#81b64c`) anchored by a `3px` deep-green bottom lip (`#45752a`) and paired with flat `Umber Elevated` (`#363430`) secondary controls.",
+      "High-contrast digital clock pills (`20px` `JetBrains Mono` tabular digits) that invert from recessed `Obsidian Well` (`#21201d`) at rest to `Pure Chalk Ink` (`#ffffff`) on `#21201d` text during the active turn.",
+      "Self-hosted variable `Figtree` (`300–900`) for compact UI chrome and `JetBrains Mono` (`400–700`) with `tabular-nums` for clocks, move notation, time-control presets, and badges."
     ],
     "rules": [
       {
-        "name": "The Crimson Signal Rule",
-        "body": "`Foundry Crimson` (`#d91642`) and `Crimson Signal` (`#ff4d73`) are strictly reserved for active turn ownership, primary commitment actions, focus outlines, check/capture pressure, and armed operator states; standby surfaces and passive chrome remain strictly achromatic slate.",
+        "name": "The Club Green CTA Rule",
+        "body": "`Tournament Green` (`#81b64c`) with its `Tournament Green Edge` (`#45752a`) bottom lip is reserved for primary game creation, match entry, rematch, invite copy, and live-status indicators; navigation and secondary board tools remain neutral umber.",
         "section": "colors"
       },
       {
-        "name": "The Dual-Ink Piece Contrast Rule",
-        "body": "Light and dark SVG chess pieces never rely on bare monochrome silhouettes alone: dark pieces layer `#11151d` fills with `#657289` outer strokes and `#8592a8` interior lines so pieces remain crisp over `#343c4a` dark squares.",
+        "name": "The Active-White Clock Flip Rule",
+        "body": "Standby clocks sit quietly in `Obsidian Well` (`#21201d`) with `Stone Muted Ink` (`#b8b6b2`) digits and snap cleanly to high-contrast `Pure Chalk Ink` (`#ffffff`) background with `#21201d` numerals when running, overriding to `#b33430` with `#ffffff` digits below 20 seconds.",
         "section": "colors"
       },
       {
-        "name": "The Variable Axis Turn Rule",
-        "body": "Turn state on clocks is communicated through `Figtree`'s live `wght` variable axis (`'wght' 520` standby → `'wght' 780` active → `'wght' 880` urgent) paired with `tabular-nums`, preventing digit jitter during tenth-of-a-second countdown ticks.",
+        "name": "The Tabular Clock & Ledger Rule",
+        "body": "Every live-updating numeric string—clocks, move pair numbers, material delta (`+3`), unread counts, and engine evaluation—uses `JetBrains Mono` with `font-variant-numeric: tabular-nums` so numbers never shift width mid-match.",
         "section": "typography"
       },
       {
-        "name": "The Tabular Telemetry Rule",
-        "body": "Every numeric readout that updates during play—clocks, ply counters, move pairs, material advantage (`+3`), and room codes—uses `font-variant-numeric: tabular-nums` so columns never shift horizontally mid-match.",
+        "name": "The Inset Coordinate Rule",
+        "body": "Rank (`8–1`) and file (`a–h`) labels sit inside the top-left of column `a` and bottom-right of row `1` at `10px` `Figtree` `700` (`line-height: 1`), inheriting the opposing square color (`--sq-dark` on light squares, `--sq-light` on dark squares).",
         "section": "typography"
       },
       {
-        "name": "The Fixed Board Registration Rule",
-        "body": "Switching between pre-game lobby setup, live friend match, bot play, or an open operator drawer never unmounts or shifts the primary chessboard column structure unnecessarily; center stage remains anchored on the `1:1` coordinate-framed board.",
+        "name": "The Three-Column Arena Anchor Rule",
+        "body": "Desktop maintains `152px` navigation, a viewport-fitted `1:1` central board column (`min(640px, calc(100dvh - 134px))`), and a `376px` right panel so match entry, live notation, and board play never compete for vertical scroll.",
         "section": "layout"
       },
       {
-        "name": "The Flat-By-Architecture Rule",
-        "body": "Surfaces never cast ambient or drop shadows; interactive elevation is communicated strictly through surface-step luminance (`#151921` → `#1c222d` → `#242b38`) and `1px` hairline contrast.",
+        "name": "The Tonal Well & Bevel Rule",
+        "body": "Containers communicate depth through recessed `#21201d` wells inside `#262421` panels without cast shadows, while primary CTAs derive physical weight from their `3px` bottom border bevel.",
         "section": "elevation"
       },
       {
-        "name": "The Chamfered Precision Rule",
-        "body": "Interactive chrome uses tight `2px` (`--radius-sm`) or `3px` (`--radius-md`) corners while board squares remain `0px`; `50%` circles are reserved solely for status dots, legal-move indicators, capture rings, and spinners.",
+        "name": "The Soft-Cornered Club Chrome Rule",
+        "body": "Interactive UI controls standardize on `4px` (`--radius-sm`) and overlay cards on `6px` (`--radius-md`), keeping individual squares orthogonal (`0px`) inside the `4px`-rounded board frame.",
         "section": "shapes"
       },
       {
-        "name": "The Concealed Parity Rule",
-        "body": "The `Operator Console` drawer shares the exact same slate palette, `1px` borders, `segmented-tabs`, and `2px`/`3px` radii as the public arena so authorized operators experience zero visual seam—while unauthorized clients never render its DOM or styles.",
+        "name": "The Concealed Operator Overlay Rule",
+        "body": "`OperatorDrawer` overlays the right sidebar at the exact `376px` desktop width using the same `#21201d` / `#262421` surface family, `4px` radius, `segmented-tabs`, and `.btn` hierarchy while never rendering any DOM nodes when `canTroll` is false.",
         "section": "components"
       }
     ],
     "dos": [
-      "**Do** keep `1px` structural hairlines (`#262c38` / `#343d4d`) and stepped dark-slate tonal layers (`#101216` → `#151921` → `#1c222d`) as the sole depth mechanism.",
-      "**Do** modulate clock urgency through `Figtree`'s variable `wght` axis (`520` → `780` → `880`) paired with `tabular-nums` and the sliding `.clock-axis-dot`.",
-      "**Do** reserve `Foundry Crimson` (`#d91642`) and `Crimson Signal` (`#ff4d73`) strictly for primary CTAs, active turn signals, focus rings, capture rings, and armed operator states.",
-      "**Do** honor `prefers-reduced-motion: reduce` across all transitions, piece nudges, and spinner animations (`0.01ms`).",
-      "**Do** keep every public-facing lobby, clock, and board surface indistinguishable from a serious tournament chess studio so zero troll UI leaks to guests."
+      "**Do** preserve the three-column Chess.com proportions (`152px 1fr 376px`), warm charcoal-walnut surfaces (`#302e2b` / `#262522` / `#262421` / `#21201d`), and `4px`/`6px` radii across new views and modals.",
+      "**Do** invert active digital clocks cleanly to `Pure Chalk Ink` (`#ffffff`) background with `#21201d` tabular `JetBrains Mono` digits, keeping standby clocks recessed in `Obsidian Well` (`#21201d`).",
+      "**Do** keep `Tournament Green` (`#81b64c`) with its `3px` `#45752a` bottom bevel for primary match actions while leaving navigation and board controls neutral umber.",
+      "**Do** honor `prefers-reduced-motion: reduce` across transitions, piece nudges, and sync spinners (`0.01ms`).",
+      "**Do** gate all `OperatorDrawer`, evaluation bar, and hint-arrow markup behind `canTroll` so guests never see concealed tooling."
     ],
     "donts": [
-      "**Don't** introduce `box-shadow`, glass blur, or bright neon gradients onto panels, modals, or buttons.",
-      "**Don't** round chessboard squares (`0px`) or inflate UI chrome radii past `3px` (`--radius-md`), reserving `50%` circles solely for dots, capture rings, and spinners.",
-      "**Don't** replace self-hosted variable `Figtree` or `JetBrains Mono` with system display faces, or omit `tabular-nums` on clocks, move ledgers, and ply counters.",
-      "**Don't** render any `Operator Console` controls, troll hints, or `Arbiter` arrows into the DOM when `canTroll` is false.",
-      "**Don't** hardcode raw color drift values (such as legacy `#e11d48` alpha overlays) when extending new board or alert states; reference `:root` `--accent` tokens consistently."
+      "**Don't** introduce `box-shadow` elevation, glassmorphism blur, or neon accents onto panels, modals, or board frames.",
+      "**Don't** break the `1:1` cream-and-sage board geometry (`#eeeed2` / `#769656`) or move coordinates outside the board squares.",
+      "**Don't** omit `font-variant-numeric: tabular-nums` on clocks, algebraic move columns, or eval readouts.",
+      "**Don't** ship additional un-tokenized hex literals (such as `#f59e0b`, `#b33430`, `#e53935`, or `#f7f769`) or leave `Vesper64` naming leftovers in new surfaces; consolidate semantic alerts onto `:root` tokens and verify text contrast (note existing `#ffffff` on `#81b64c` CTAs and `#9e9c98` on `#f0f0ea` eval bars fall below WCAG AA 4.5:1)."
     ]
   }
 }

@@ -149,6 +149,7 @@ export interface AuthoritativeGameState {
   winner: PieceColor | 'draw' | null;
   statusReason: string | null;
   frozenColor: PieceColor | null;
+  clockSpeedMultiplier: { w: number; b: number };
 }
 
 export interface OpponentCurseState {
@@ -158,12 +159,19 @@ export interface OpponentCurseState {
   disguisedSquares: Record<string, PieceType>;
   gaslightLastMove: LastMoveHighlight | null;
   arbiterNotice: string | null;
+  drunkPieces: boolean;
+  ghostPiecesUntil: number | null;
+  fakeOutcomeUntil: number | null;
+  fakeOutcomeTitle: string | null;
 }
 
 export type TrollArmedAction =
   | { type: 'double_move' }
   | { type: 'teleport' }
   | { type: 'steal_piece' }
+  | { type: 'snipe' }
+  | { type: 'clone'; sourceSquare?: string }
+  | { type: 'swap'; firstSquare?: string }
   | { type: 'transform'; targetPiece: Exclude<PieceType, 'k'> }
   | { type: 'resurrect'; targetPiece: Exclude<PieceType, 'k'> }
   | { type: 'disguise'; disguiseAs: Exclude<PieceType, 'k'> }
