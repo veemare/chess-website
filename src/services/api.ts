@@ -1,9 +1,12 @@
 import type {
   DirectChallengeSummary,
   GameVariant,
+  LiveWatchGameFull,
+  LiveWatchGameSummary,
   PieceColor,
   PublicUser,
   SocialStateResponse,
+  WatchFilterMode,
 } from '../types/chess';
 
 const TOKEN_STORAGE_KEY = 'vesper64_session_token';
@@ -108,8 +111,35 @@ export async function claimOwnerAccount(input: {
   return { user: res.user, hasOwner: res.hasOwner };
 }
 
-export async function fetchOwnerUsers(): Promise<{ users: PublicUser[] }> {
-  return apiFetch<{ users: PublicUser[] }>('/owner/users');
+export async function fetchOwnerUsers(query?: string): Promise<{ users: PublicUser[] }> {
+  const qs = query?.trim() ? `?q=${encodeURIComponent(query.trim())}` : '';
+  return apiFetch<{ users: PublicUser[] }>(`/owner/users${qs}`);
+}
+
+export async function setOwnerUserTitle(
+  username: string,
+  title: string | null
+): Promise<{ updated: PublicUser; users: PublicUser[] }> {
+  return apiFetch<{ updated: PublicUser; users: PublicUser[] }>('/owner/title', {
+    method: 'POST',
+    body: JSON.stringify({ username, title }),
+  });
+}
+
+export async function fetchUserProfile(username: string): Promise<{ profile: import('../types/chess').UserProfile }> {
+  return apiFetch<{ profile: import('../types/chess').UserProfile }>(
+    `/profile?username=${encodeURIComponent(username.trim())}`
+  );
+}
+
+export async function updateMyProfile(input: {
+  bio?: string;
+  displayName?: string;
+}): Promise<{ user: PublicUser }> {
+  return apiFetch<{ user: PublicUser }>('/profile/update', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export async function grantTrollAccess(input: {
@@ -195,5 +225,50 @@ export async function respondDirectChallenge(
   return apiFetch<{ challenge: DirectChallengeSummary }>('/social/challenge-respond', {
     method: 'POST',
     body: JSON.stringify({ challengeId, action }),
+  });
+}
+
+export async function publishWatchGame(payload: {
+  gameId: string;
+  mode: 'pvp' | 'bot';
+  whiteName: string;
+  blackName: string;
+  variant: GameVariant;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  fen: string;
+  moves: unknown[];
+  lastMove: { from: string; to: string } | null;
+  whiteMs: number;
+  blackMs: number;
+  whiteChecks: number;
+  blackChecks: number;
+  lastTickAt: number | null;
+  status: string;
+  statusReason: string | null;
+}): Promise<void> {
+  await apiFetch('/watch/publish', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchWatchGames(
+  filter: WatchFilterMode
+): Promise<{ games: LiveWatchGameSummary[] }> {
+  const params = new URLSearchParams({ filter });
+  return apiFetch(`/watch/list?${params.toString()}`);
+}
+
+export async function fetchWatchGame(gameId: string): Promise<{ game: LiveWatchGameFull }> {
+  const params = new URLSearchParams({ id: gameId });
+  return apiFetch(`/watch/game?${params.toString()}`);
+}
+
+export async function removeWatchGame(gameId: string): Promise<void> {
+  await apiFetch('/watch/remove', {
+    method: 'POST',
+    body: JSON.stringify({ gameId }),
   });
 }

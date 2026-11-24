@@ -14,6 +14,8 @@ export interface StoredUser {
   passwordHash: string;
   salt: string;
   role: 'owner' | 'user';
+  title?: string | null;
+  bio?: string;
   createdAt: number;
   trollGrant: TrollGrant;
 }
@@ -30,6 +32,8 @@ export interface PublicUser {
   username: string;
   displayName: string;
   role: 'owner' | 'user';
+  title: string | null;
+  bio: string;
   createdAt: number;
   trollAccess: TrollAccessSummary;
 }
@@ -104,10 +108,35 @@ export interface ApiResponse {
 }
 
 const DB_KEY = 'db_v1';
+const WATCH_KEY = 'watch_v1';
 const SESSION_COOKIE = 'vesper_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+const WATCH_ACTIVE_TTL_MS = 5 * 60 * 1000;
+const WATCH_ENDED_TTL_MS = 90 * 1000;
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,24}$/;
+
+export interface LiveWatchGameRecord {
+  gameId: string;
+  mode: 'pvp' | 'bot';
+  whiteName: string;
+  blackName: string;
+  variant: string;
+  timeControlLabel: string;
+  baseMs: number;
+  incMs: number;
+  fen: string;
+  moves: unknown[];
+  lastMove: { from: string; to: string } | null;
+  whiteMs: number;
+  blackMs: number;
+  whiteChecks: number;
+  blackChecks: number;
+  lastTickAt: number | null;
+  status: string;
+  statusReason: string | null;
+  updatedAt: number;
+}
 
 function jsonResponse(
   status: number,
@@ -237,6 +266,8 @@ function toPublicUser(user: StoredUser, now = Date.now()): PublicUser {
     username: user.username,
     displayName: user.displayName,
     role: user.role,
+    title: user.title?.trim() || null,
+    bio: user.bio || '',
     createdAt: user.createdAt,
     trollAccess: resolveTrollAccess(user, now),
   };
@@ -420,6 +451,99 @@ export async function handleApiRequest(
     }
   }
 
+  if (path.startsWith('/watch')) {
+    const now = Date.now();
+    const rawMap = (await store.getJson<Record<string, LiveWatchGameRecord>>(WATCH_KEY)) || {};
+    const pruned: Record<string, LiveWatchGameRecord> = {};
+    let prunedDirty = false;
+    for (const [gid, g] of Object.entries(rawMap)) {
+      const ttl = g.status === 'active' ? WATCH_ACTIVE_TTL_MS : WATCH_ENDED_TTL_MS;
+      if (now - g.updatedAt <= ttl) {
+        pruned[gid] = g;
+      } else {
+        prunedDirty = true;
+      }
+    }
+
+    if (method === 'GET' && path === '/watch/list') {
+      if (prunedDirty) await store.setJson(WATCH_KEY, pruned);
+      const filter = (req.query.get('filter') || 'all').toLowerCase();
+      const games = Object.values(pruned)
+        .filter((g) => (filter === 'pvp' || filter === 'bot' ? g.mode === filter : true))
+        .sort((a, b) => {
+          const aLive = a.status === 'active' ? 1 : 0;
+          const bLive = b.status === 'active' ? 1 : 0;
+          if (aLive !== bLive) return bLive - aLive;
+          return b.updatedAt - a.updatedAt;
+        })
+        .map((g) => ({
+          gameId: g.gameId,
+          mode: g.mode,
+          whiteName: g.whiteName,
+          blackName: g.blackName,
+          variant: g.variant,
+          timeControlLabel: g.timeControlLabel,
+          moveCount: Array.isArray(g.moves) ? g.moves.length : 0,
+          status: g.status,
+          statusReason: g.statusReason,
+          updatedAt: g.updatedAt,
+          fen: g.fen,
+        }));
+      return jsonResponse(200, { games });
+    }
+
+    if (method === 'GET' && path === '/watch/game') {
+      if (prunedDirty) await store.setJson(WATCH_KEY, pruned);
+      const id = (req.query.get('id') || '').trim();
+      const game = pruned[id];
+      if (!game) {
+        return jsonResponse(404, { error: 'Live game not found or already closed.' });
+      }
+      return jsonResponse(200, { game });
+    }
+
+    if (method === 'POST' && path === '/watch/publish') {
+      const body = parseBody<Partial<LiveWatchGameRecord>>(req);
+      if (!body?.gameId || !body.fen || !body.mode) {
+        return jsonResponse(400, { error: 'gameId, mode, and fen are required.' });
+      }
+      pruned[body.gameId] = {
+        gameId: body.gameId,
+        mode: body.mode === 'bot' ? 'bot' : 'pvp',
+        whiteName: (body.whiteName || 'White').slice(0, 32),
+        blackName: (body.blackName || 'Black').slice(0, 32),
+        variant: body.variant || 'standard',
+        timeControlLabel: body.timeControlLabel || '5 | 0',
+        baseMs: Number(body.baseMs) || 0,
+        incMs: Number(body.incMs) || 0,
+        fen: body.fen,
+        moves: Array.isArray(body.moves) ? body.moves.slice(-200) : [],
+        lastMove: body.lastMove ?? null,
+        whiteMs: Number(body.whiteMs) || 0,
+        blackMs: Number(body.blackMs) || 0,
+        whiteChecks: Number(body.whiteChecks) || 0,
+        blackChecks: Number(body.blackChecks) || 0,
+        lastTickAt: body.lastTickAt ?? null,
+        status: body.status || 'active',
+        statusReason: body.statusReason ?? null,
+        updatedAt: now,
+      };
+      await store.setJson(WATCH_KEY, pruned);
+      return jsonResponse(200, { ok: true });
+    }
+
+    if (method === 'POST' && path === '/watch/remove') {
+      const body = parseBody<{ gameId?: string }>(req);
+      if (body?.gameId && pruned[body.gameId]) {
+        delete pruned[body.gameId];
+        await store.setJson(WATCH_KEY, pruned);
+      } else if (prunedDirty) {
+        await store.setJson(WATCH_KEY, pruned);
+      }
+      return jsonResponse(200, { ok: true });
+    }
+  }
+
   const db = await loadDatabase(store);
   const currentUser = findUserBySession(db, req);
   const requiresClaimCode = Boolean(process.env.OWNER_CLAIM_CODE?.trim());
@@ -544,7 +668,16 @@ export async function handleApiRequest(
       return jsonResponse(403, { error: 'Owner account required.' });
     }
     const now = Date.now();
+    const q = (req.query.get('q') || '').trim().toLowerCase();
     const users = Object.values(db.users)
+      .filter((u) => {
+        if (!q) return true;
+        return (
+          u.username.toLowerCase().includes(q) ||
+          u.displayName.toLowerCase().includes(q) ||
+          (u.title || '').toLowerCase().includes(q)
+        );
+      })
       .sort((a, b) => {
         if (a.role === 'owner' && b.role !== 'owner') return -1;
         if (b.role === 'owner' && a.role !== 'owner') return 1;
@@ -552,6 +685,79 @@ export async function handleApiRequest(
       })
       .map((u) => toPublicUser(u, now));
     return jsonResponse(200, { users });
+  }
+
+  if (method === 'POST' && path === '/owner/title') {
+    if (!currentUser || currentUser.role !== 'owner') {
+      return jsonResponse(403, { error: 'Owner account required.' });
+    }
+    const body = parseBody<{ username?: string; title?: string | null }>(req);
+    if (!body || !body.username) {
+      return jsonResponse(400, { error: 'Target username is required.' });
+    }
+    const target = db.users[normalizeUsername(body.username)];
+    if (!target) {
+      return jsonResponse(404, { error: `No account found for "${body.username.trim()}".` });
+    }
+    const cleanTitle = typeof body.title === 'string' ? body.title.trim().slice(0, 16) : '';
+    target.title = cleanTitle || null;
+    await store.setJson(DB_KEY, db);
+    const now = Date.now();
+    const users = Object.values(db.users)
+      .sort((a, b) => {
+        if (a.role === 'owner' && b.role !== 'owner') return -1;
+        if (b.role === 'owner' && a.role !== 'owner') return 1;
+        return b.createdAt - a.createdAt;
+      })
+      .map((u) => toPublicUser(u, now));
+    return jsonResponse(200, { updated: toPublicUser(target, now), users });
+  }
+
+  if (method === 'GET' && path === '/profile') {
+    const rawUsername = (req.query.get('username') || '').trim();
+    if (!rawUsername) {
+      return jsonResponse(400, { error: 'Username is required.' });
+    }
+    const target = db.users[normalizeUsername(rawUsername)];
+    if (!target) {
+      return jsonResponse(404, { error: `No profile found for "${rawUsername}".` });
+    }
+    const now = Date.now();
+    const lastSeen = db.presence[target.id] ?? null;
+    const online = lastSeen !== null && now - lastSeen <= 45_000;
+    return jsonResponse(200, {
+      profile: {
+        id: target.id,
+        username: target.username,
+        displayName: target.displayName,
+        role: target.role,
+        title: target.title?.trim() || null,
+        bio: target.bio || '',
+        createdAt: target.createdAt,
+        online,
+      },
+    });
+  }
+
+  if (method === 'POST' && path === '/profile/update') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in to update your profile.' });
+    }
+    const body = parseBody<{ bio?: string; displayName?: string }>(req);
+    if (!body) {
+      return jsonResponse(400, { error: 'Invalid request body.' });
+    }
+    if (typeof body.bio === 'string') {
+      currentUser.bio = body.bio.trim().slice(0, 240);
+    }
+    if (typeof body.displayName === 'string') {
+      const cleanName = body.displayName.trim().slice(0, 24);
+      if (cleanName.length >= 2) {
+        currentUser.displayName = cleanName;
+      }
+    }
+    await store.setJson(DB_KEY, db);
+    return jsonResponse(200, { user: toPublicUser(currentUser) });
   }
 
   if (method === 'POST' && path === '/owner/troll-grant') {

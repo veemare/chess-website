@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-24T20:37:48Z",
+  "generatedAt": "2026-11-24T20:58:21Z",
   "title": "Design System: ChessArena",
   "extensions": {
     "colorMeta": {
@@ -19,34 +19,49 @@
           "oklch(95% 0.067 131.5)"
         ]
       },
-      "tournament-green-hover": {
+      "tournament-green-btn": {
         "role": "primary",
-        "displayName": "Tournament Green Hover",
-        "canonical": "#95cc5a",
+        "displayName": "Tournament Green CTA",
+        "canonical": "#4d7e23",
         "tonalRamp": [
-          "oklch(16% 0.07 130.7)",
-          "oklch(26% 0.112 130.7)",
-          "oklch(38% 0.156 130.7)",
-          "oklch(50% 0.156 130.7)",
-          "oklch(62% 0.156 130.7)",
-          "oklch(74% 0.156 130.7)",
-          "oklch(85% 0.112 130.7)",
-          "oklch(95% 0.07 130.7)"
+          "oklch(16% 0.059 133.6)",
+          "oklch(26% 0.095 133.6)",
+          "oklch(38% 0.132 133.6)",
+          "oklch(50% 0.132 133.6)",
+          "oklch(62% 0.132 133.6)",
+          "oklch(74% 0.132 133.6)",
+          "oklch(85% 0.095 133.6)",
+          "oklch(95% 0.059 133.6)"
+        ]
+      },
+      "tournament-green-btn-hover": {
+        "role": "primary",
+        "displayName": "Tournament Green CTA Hover",
+        "canonical": "#44711e",
+        "tonalRamp": [
+          "oklch(16% 0.055 133.8)",
+          "oklch(26% 0.088 133.8)",
+          "oklch(38% 0.123 133.8)",
+          "oklch(50% 0.123 133.8)",
+          "oklch(62% 0.123 133.8)",
+          "oklch(74% 0.123 133.8)",
+          "oklch(85% 0.088 133.8)",
+          "oklch(95% 0.055 133.8)"
         ]
       },
       "tournament-green-edge": {
         "role": "primary",
         "displayName": "Tournament Green Edge",
-        "canonical": "#45752a",
+        "canonical": "#355916",
         "tonalRamp": [
-          "oklch(16% 0.053 136.0)",
-          "oklch(26% 0.085 136.0)",
-          "oklch(38% 0.118 136.0)",
-          "oklch(50% 0.118 136.0)",
-          "oklch(62% 0.118 136.0)",
-          "oklch(74% 0.118 136.0)",
-          "oklch(85% 0.085 136.0)",
-          "oklch(95% 0.053 136.0)"
+          "oklch(16% 0.047 133.6)",
+          "oklch(26% 0.074 133.6)",
+          "oklch(38% 0.103 133.6)",
+          "oklch(50% 0.103 133.6)",
+          "oklch(62% 0.103 133.6)",
+          "oklch(74% 0.103 133.6)",
+          "oklch(85% 0.074 133.6)",
+          "oklch(95% 0.047 133.6)"
         ]
       },
       "charcoal-ground": {
@@ -294,22 +309,22 @@
       "headline": {
         "displayName": "Headline",
         "style": "normal",
-        "purpose": "Right-sidebar Play Chess heading and Invite Gate heading."
+        "purpose": "Right-sidebar Play Chess and Watch Live headings (1.5rem), Invite Gate heading (1.3rem), and setup back headings (1.15rem)."
       },
       "title": {
         "displayName": "Title",
         "style": "normal",
-        "purpose": "ChessArena brand wordmark and modal headers."
+        "purpose": "ChessArena brand wordmark, modal headers, and Play Chess menu card titles."
       },
       "body": {
         "displayName": "Body",
         "style": "normal",
-        "purpose": "Primary prose, navigation items, player names, inputs, and buttons."
+        "purpose": "Primary prose, navigation items, player names, watch card matchups, inputs, and buttons."
       },
       "label": {
         "displayName": "Label",
         "style": "normal",
-        "purpose": "Field labels, segmented tabs, operator action tiles, chat lines, and alerts."
+        "purpose": "Field labels, menu subtitles, segmented tabs, operator action tiles, chat lines, and alerts."
       },
       "clock": {
         "displayName": "Digital Clock",
@@ -322,7 +337,13 @@
         "purpose": "Algebraic SAN move columns, time-control presets, badges, and room URLs."
       }
     },
-    "shadows": [],
+    "shadows": [
+      {
+        "name": "drag-target-ring",
+        "value": "inset 0 0 0 3px rgba(255, 255, 255, 0.65)",
+        "purpose": "Flat inset highlight on legal destination squares during pointer piece dragging; panels and cards use zero drop shadows."
+      }
+    ],
     "motion": [
       {
         "name": "nav-hover",
@@ -366,15 +387,15 @@
       "name": "Primary CTA Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Beveled Chess.com green primary CTA for room creation, invite join, and rematch.",
-      "html": "<button type=\"button\" class=\"ds-btn ds-btn-green ds-create-room-btn\">Play a Friend (Create Link)</button>",
-      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 14px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn-green { background: var(--green, #81b64c); border-color: var(--green-edge, #45752a); border-bottom-width: 3px; color: #ffffff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); } .ds-create-room-btn { height: 44px; font-size: 15px; } .ds-btn-green:hover { background: var(--green-hover, #95cc5a); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
+      "description": "WCAG AA beveled Chess.com green primary CTA for Sign Up, Create Invite Link, Start Bot Match, and Rematch.",
+      "html": "<button type=\"button\" class=\"ds-btn ds-btn-green ds-create-room-btn\">Create Invite Link</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 14px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn-green { background: var(--green-btn, #4d7e23); border-color: var(--green-edge, #355916); border-bottom-width: 3px; color: #ffffff; } .ds-create-room-btn { height: 44px; font-size: 15px; } .ds-btn-green:hover { background: var(--green-btn-hover, #44711e); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Neutral umber control for Play vs Computer, Join, Flip, Draw, and Resign actions.",
+      "description": "Neutral umber control for Log In, Flip, Draw, and Resign actions.",
       "html": "<button type=\"button\" class=\"ds-btn ds-btn-secondary\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Flip</span></button>",
       "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-sm, 4px); border: 1px solid var(--hairline-strong, #4d4a46); background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 12px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn:hover { background: var(--bg-hover, #403e3a); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
@@ -382,7 +403,7 @@
       "name": "Ghost Button",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "Subordinate dismissals, room leave, decline, and compact meta actions.",
+      "description": "Subordinate dismissals, Back navigation, Leave, Decline, and compact meta actions.",
       "html": "<button type=\"button\" class=\"ds-btn ds-btn-ghost\">Leave</button>",
       "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 8px; border-radius: var(--radius-sm, 4px); border: 1px solid transparent; font-family: var(--font-sans, 'Figtree', sans-serif); font-size: 11px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-btn-ghost { background: transparent; color: var(--ink-muted, #b8b6b2); } .ds-btn-ghost:hover { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
@@ -398,9 +419,25 @@
       "name": "Left Navigation Rail",
       "kind": "nav",
       "refersTo": "nav-item",
-      "description": "Walnut left sidebar navigation with active highlight and green unread count badge.",
-      "html": "<nav class=\"ds-left-nav\" aria-label=\"Main navigation\"><button type=\"button\" class=\"ds-left-nav-item is-active\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Play</span></button><button type=\"button\" class=\"ds-left-nav-item\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><span>Friends</span><span class=\"ds-nav-count\">2</span></button></nav>",
-      "css": ".ds-left-nav { width: 152px; display: flex; flex-direction: column; gap: 4px; padding: 12px 10px; background: var(--bg-nav, #262522); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-left-nav-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border-radius: var(--radius-sm, 4px); border: 0; background: transparent; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; transition: background 120ms ease, color 120ms ease; } .ds-left-nav-item:hover, .ds-left-nav-item.is-active { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-nav-count { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--green, #81b64c); color: #161512; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700; } .ds-left-nav-item:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
+      "description": "148px walnut navigation rail with Play, Watch, Friends unread badge, and bottom Sign Up / Log In controls.",
+      "html": "<aside class=\"ds-left-nav\"><div class=\"ds-left-nav-top\"><div class=\"ds-brand\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M5 19h14v2H5v-2Zm1.4-2.5L4.5 7.5l4.8 3.2L12 5l2.7 5.7 4.8-3.2-1.9 9H6.4Z\"/></svg><span>ChessArena</span></div><nav class=\"ds-left-nav-links\" aria-label=\"Main navigation\"><button type=\"button\" class=\"ds-left-nav-item is-active\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M17 2l4 4-4 4\"/><path d=\"M3 11v-1a4 4 0 0 1 4-4h14\"/><path d=\"M7 22l-4-4 4-4\"/><path d=\"M21 13v1a4 4 0 0 1-4 4H3\"/></svg><span>Play</span></button><button type=\"button\" class=\"ds-left-nav-item\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 10h4\"/><path d=\"M19 7V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3\"/><path d=\"M9 7V4a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3\"/><circle cx=\"7\" cy=\"14\" r=\"4\"/><circle cx=\"17\" cy=\"14\" r=\"4\"/><path d=\"M10.5 11.5L13.5 11.5\"/></svg><span>Watch</span></button><button type=\"button\" class=\"ds-left-nav-item\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><span>Friends</span><span class=\"ds-nav-count\">2</span></button></nav></div><div class=\"ds-left-nav-bottom\"><button type=\"button\" class=\"ds-auth-btn is-green\">Sign Up</button><button type=\"button\" class=\"ds-auth-btn is-secondary\">Log In</button><button type=\"button\" class=\"ds-left-sound\">Sound: On</button></div></aside>",
+      "css": ".ds-left-nav { width: 148px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: 14px 10px; background: var(--bg-nav, #262522); border-right: 1px solid rgba(0, 0, 0, 0.25); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-left-nav-top { display: flex; flex-direction: column; gap: 14px; } .ds-brand { display: flex; align-items: center; gap: 8px; padding: 6px 8px; color: var(--ink, #ffffff); font-size: 16px; font-weight: 800; letter-spacing: -0.02em; } .ds-brand svg { color: var(--green, #81b64c); flex-shrink: 0; } .ds-left-nav-links { display: flex; flex-direction: column; gap: 4px; } .ds-left-nav-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border-radius: var(--radius-sm, 4px); border: 0; background: transparent; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; transition: background 120ms ease, color 120ms ease; } .ds-left-nav-item:hover, .ds-left-nav-item.is-active { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-nav-count { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--green, #81b64c); color: #161512; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700; } .ds-left-nav-bottom { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; } .ds-auth-btn { width: 100%; height: 36px; border-radius: var(--radius-sm, 4px); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 120ms ease, transform 70ms ease; } .ds-auth-btn.is-green { background: var(--green-btn, #4d7e23); border: 1px solid var(--green-edge, #355916); border-bottom-width: 3px; color: #ffffff; } .ds-auth-btn.is-green:hover { background: var(--green-btn-hover, #44711e); } .ds-auth-btn.is-secondary { background: var(--bg-elevated, #363430); border: 1px solid var(--hairline-strong, #4d4a46); color: var(--ink, #ffffff); } .ds-auth-btn.is-secondary:hover { background: var(--bg-hover, #403e3a); } .ds-left-sound { width: 100%; padding: 6px 8px; background: transparent; border: 0; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; } .ds-left-sound:hover { color: var(--ink, #ffffff); } .ds-left-nav-item:focus-visible, .ds-auth-btn:focus-visible, .ds-left-sound:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
+    },
+    {
+      "name": "Play Chess Menu",
+      "kind": "card",
+      "refersTo": "play-menu-card",
+      "description": "Chess.com-style right-sidebar launcher stack inside the 8px-rounded espresso card.",
+      "html": "<div class=\"ds-play-menu\"><div class=\"ds-play-title\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M5 19h14v2H5v-2Zm1.4-2.5L4.5 7.5l4.8 3.2L12 5l2.7 5.7 4.8-3.2-1.9 9H6.4Z\"/></svg><span>Play Chess</span></div><button type=\"button\" class=\"ds-menu-card\"><span class=\"ds-menu-icon is-gold\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></svg></span><span class=\"ds-menu-text\"><strong>Play Online</strong><span>Create an invite link for a friend</span></span></button><button type=\"button\" class=\"ds-menu-card\"><span class=\"ds-menu-icon is-blue\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M12 8V4\"/><circle cx=\"12\" cy=\"3\" r=\"1\"/><circle cx=\"9\" cy=\"14\" r=\"1\" fill=\"currentColor\"/><circle cx=\"15\" cy=\"14\" r=\"1\" fill=\"currentColor\"/></svg></span><span class=\"ds-menu-text\"><strong>Play Bots</strong><span>Challenge our Chess Bot at any speed</span></span></button><button type=\"button\" class=\"ds-menu-card\"><span class=\"ds-menu-icon is-sky\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10 10h4\"/><path d=\"M19 7V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3\"/><path d=\"M9 7V4a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3\"/><circle cx=\"7\" cy=\"14\" r=\"4\"/><circle cx=\"17\" cy=\"14\" r=\"4\"/><path d=\"M10.5 11.5L13.5 11.5\"/></svg></span><span class=\"ds-menu-text\"><strong>Watch Live</strong><span>Spectate real players or player vs bots</span></span></button><div class=\"ds-menu-footer\"><button type=\"button\" class=\"ds-footer-link\">Join by Code</button><button type=\"button\" class=\"ds-footer-link\">Friends List</button></div></div>",
+      "css": ".ds-play-menu { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 10px; padding: 20px 18px; border-radius: 8px; background: var(--bg-panel, #262421); color: var(--ink, #ffffff); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-play-title { display: flex; align-items: center; justify-content: center; gap: 10px; padding-bottom: 4px; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; } .ds-menu-card { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: var(--radius-md, 6px); border: 0; background: #2f2d2a; color: var(--ink, #ffffff); text-align: left; cursor: pointer; transition: background 120ms ease; } .ds-menu-card:hover { background: #3a3733; } .ds-menu-icon { width: 34px; height: 34px; border-radius: var(--radius-sm, 4px); display: flex; align-items: center; justify-content: center; flex-shrink: 0; } .ds-menu-icon.is-gold { color: #f5b400; } .ds-menu-icon.is-blue { color: #5ea3e5; } .ds-menu-icon.is-sky { color: #7cc4fa; } .ds-menu-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; } .ds-menu-text strong { font-size: 15px; font-weight: 800; } .ds-menu-text span { font-size: 12px; color: var(--ink-muted, #b8b6b2); } .ds-menu-footer { display: flex; align-items: center; justify-content: center; gap: 20px; padding-top: 8px; } .ds-footer-link { background: transparent; border: 0; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; } .ds-footer-link:hover { color: var(--ink, #ffffff); } .ds-menu-card:focus-visible, .ds-footer-link:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
+    },
+    {
+      "name": "Watch Live Sidebar",
+      "kind": "card",
+      "refersTo": "watch-game-card",
+      "description": "Live spectator directory with All / Real Players / Player vs Bots segmented filter and recessed match cards.",
+      "html": "<div class=\"ds-watch-wrap\"><div class=\"ds-seg-tabs\"><button type=\"button\" class=\"ds-seg-tab is-active\">All</button><button type=\"button\" class=\"ds-seg-tab\">Real Players</button><button type=\"button\" class=\"ds-seg-tab\">Player vs Bots</button></div><button type=\"button\" class=\"ds-watch-card\"><div class=\"ds-watch-row\"><span class=\"ds-watch-tag\"><span class=\"ds-dot\" aria-hidden=\"true\"></span><span>Live Players</span></span><span class=\"ds-watch-meta\">Standard · 5 | 0</span></div><div class=\"ds-watch-players\">@alice vs @bob</div><div class=\"ds-watch-row\"><span class=\"ds-watch-move\">Move 14</span><span class=\"ds-watch-cta\">Watch</span></div></button></div>",
+      "css": ".ds-watch-wrap { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 8px; background: var(--bg-panel, #262421); font-family: var(--font-sans, 'Figtree', sans-serif); } .ds-seg-tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; background: var(--bg-deep, #21201d); border-radius: var(--radius-sm, 4px); } .ds-seg-tab { padding: 6px; border: 0; border-radius: 3px; background: transparent; color: var(--ink-muted, #b8b6b2); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; } .ds-seg-tab:hover { color: var(--ink, #ffffff); } .ds-seg-tab.is-active { background: var(--bg-elevated, #363430); color: var(--ink, #ffffff); } .ds-watch-card { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 11px 12px; border-radius: var(--radius-md, 6px); border: 1px solid var(--hairline, #3c3a37); background: var(--bg-deep, #21201d); text-align: left; cursor: pointer; transition: background 120ms ease, border-color 120ms ease; } .ds-watch-card:hover { background: var(--bg-elevated, #363430); border-color: var(--green, #81b64c); } .ds-watch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; } .ds-watch-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--ink, #ffffff); } .ds-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live, #81b64c); flex-shrink: 0; } .ds-watch-meta { font-family: var(--font-mono, monospace); font-variant-numeric: tabular-nums; color: var(--ink-muted, #b8b6b2); } .ds-watch-players { font-size: 13px; font-weight: 700; color: var(--ink, #ffffff); } .ds-watch-move { font-size: 12px; color: var(--ink-muted, #b8b6b2); } .ds-watch-cta { font-weight: 800; color: var(--green, #81b64c); } .ds-watch-card:focus-visible, .ds-seg-tab:focus-visible { outline: 2px solid var(--green, #81b64c); outline-offset: 2px; }"
     },
     {
       "name": "Player Clock Strip",
@@ -429,18 +466,18 @@
   ],
   "narrative": {
     "northStar": "The Classic Club Table",
-    "overview": "ChessArena adopts a familiar three-column online chess layout modeled after Chess.com: a narrow dark-walnut left navigation rail (`#262522`), a centered warm-charcoal board stage (`#302e2b`) anchoring a classic cream-and-sage `8x8` board (`#eeeed2` / `#769656`) between compact player clock strips, and a dense dark-espresso action sidebar (`#262421`) that transitions cleanly from pre-match setup into live algebraic notation, board controls, and room chat.\n\nCover credibility remains foundational: guests join via link or code with zero onboarding wall and zero visible trace of hidden tooling. Authorized accounts retain silent access to the fixed right-edge `Operator Console` drawer via `Ctrl+Shift+T` / `Cmd+Shift+T` or triple-clicking the `ChessArena` mark, and dismiss all concealed state in one stroke with `Esc`.",
+    "overview": "ChessArena adopts a familiar three-column online chess layout modeled 1-to-1 after Chess.com: a narrow dark-walnut left navigation rail (`#262522`) with `Play`, `Watch`, `Friends`, and bottom `Sign Up` / `Log In` triggers; a centered warm-charcoal board stage (`#302e2b`) anchoring a classic cream-and-sage `8x8` board (`#eeeed2` / `#769656`) with smooth pointer-tracked piece dragging (`.floating-drag-piece`) between compact player clock strips; and a floating `8px`-rounded dark-espresso right sidebar card (`#262421`) that leads with the `Play Chess` launcher menu before branching into match setup, the `Watch Live` spectator feed, or live algebraic notation, board controls, and room chat.\n\nCover credibility remains foundational: guests join via link or code with zero onboarding wall and zero visible trace of hidden tooling. Authorized accounts retain silent access to the fixed right-edge `Operator Console` drawer via `Ctrl+Shift+T` / `Cmd+Shift+T` or triple-clicking the `ChessArena` mark, and dismiss all concealed state in one stroke with `Esc`.",
     "keyCharacteristics": [
-      "Warm charcoal-and-walnut tonal architecture (`#21201d` wells, `#262421` / `#262522` sidebars, `#302e2b` main arena, `#363430` interactive controls) with zero drop shadows across panels and cards.",
-      "Classic tournament cream-and-sage chessboard (`#eeeed2` / `#769656`) with inset corner rank/file coordinates, yellow-olive last-move highlights (`#f6f682` / `#baca44`), and translucent dark move dots/capture rings.",
-      "Tactile club-green primary CTAs (`#81b64c`) anchored by a `3px` deep-green bottom lip (`#45752a`) and paired with flat `Umber Elevated` (`#363430`) secondary controls.",
+      "Warm charcoal-and-walnut tonal architecture (`#21201d` wells, `#262421` / `#262522` sidebars, `#302e2b` main arena, `#363430` interactive controls) with zero drop shadows across panels and cards, locked to `100dvh` on desktop so dragging and moves never scroll the page.",
+      "Classic tournament cream-and-sage chessboard (`#eeeed2` / `#769656`) with inset corner rank/file coordinates, yellow-olive last-move highlights (`#f6f682` / `#baca44`), translucent dark move dots/capture rings, warm Neo-style SVG pieces, and a backgroundless pointer-dragged piece layer (`.floating-drag-piece`).",
+      "WCAG AA-accessible club-green primary CTAs (`#4d7e23` resting, `#44711e` hover, `4.86:1` / `5.79:1` against `#ffffff`) anchored by a `3px` deep-green bottom bevel (`#355916`) and paired with bright `Tournament Green` (`#81b64c`) indicators and flat `Umber Elevated` (`#363430`) secondary controls.",
       "High-contrast digital clock pills (`20px` `JetBrains Mono` tabular digits) that invert from recessed `Obsidian Well` (`#21201d`) at rest to `Pure Chalk Ink` (`#ffffff`) on `#21201d` text during the active turn.",
       "Self-hosted variable `Figtree` (`300–900`) for compact UI chrome and `JetBrains Mono` (`400–700`) with `tabular-nums` for clocks, move notation, time-control presets, and badges."
     ],
     "rules": [
       {
         "name": "The Club Green CTA Rule",
-        "body": "`Tournament Green` (`#81b64c`) with its `Tournament Green Edge` (`#45752a`) bottom lip is reserved for primary game creation, match entry, rematch, invite copy, and live-status indicators; navigation and secondary board tools remain neutral umber.",
+        "body": "White-text primary buttons exclusively use `Tournament Green CTA` (`#4d7e23`, hover `#44711e`) with its `Tournament Green Edge` (`#355916`) bottom lip for WCAG AA contrast (`>=4.86:1`), reserving bright `Tournament Green` (`#81b64c`) for dark-surface accents, borders, and `#161512`-ink pills.",
         "section": "colors"
       },
       {
@@ -460,37 +497,39 @@
       },
       {
         "name": "The Three-Column Arena Anchor Rule",
-        "body": "Desktop maintains `152px` navigation, a viewport-fitted `1:1` central board column (`min(640px, calc(100dvh - 134px))`), and a `376px` right panel so match entry, live notation, and board play never compete for vertical scroll.",
+        "body": "Desktop maintains a `100dvh`-locked `148px 1fr 390px` grid pairing a narrow walnut nav rail, a viewport-fitted `1:1` board column (`min(640px, calc(100dvh - 134px))`), and an `8px`-rounded `right-sidebar` card so match entry, live spectating, notation, and dragging never fight for page scroll.",
         "section": "layout"
       },
       {
         "name": "The Tonal Well & Bevel Rule",
-        "body": "Containers communicate depth through recessed `#21201d` wells inside `#262421` panels without cast shadows, while primary CTAs derive physical weight from their `3px` bottom border bevel.",
+        "body": "Containers communicate depth through recessed `#21201d` wells inside `#262421` panels without cast drop shadows, while primary CTAs derive physical weight from their `3px` bottom border bevel.",
         "section": "elevation"
       },
       {
         "name": "The Soft-Cornered Club Chrome Rule",
-        "body": "Interactive UI controls standardize on `4px` (`--radius-sm`) and overlay cards on `6px` (`--radius-md`), keeping individual squares orthogonal (`0px`) inside the `4px`-rounded board frame.",
+        "body": "Interactive UI controls standardize on `4px` (`--radius-sm`), launcher/spectator/overlay cards on `6px` (`--radius-md`), and the desktop right sidebar frame on `8px`, keeping individual squares orthogonal (`0px`) inside the `4px`-rounded board frame.",
         "section": "shapes"
       },
       {
         "name": "The Concealed Operator Overlay Rule",
-        "body": "`OperatorDrawer` overlays the right sidebar at the exact `376px` desktop width using the same `#21201d` / `#262421` surface family, `4px` radius, `segmented-tabs`, and `.btn` hierarchy while never rendering any DOM nodes when `canTroll` is false.",
+        "body": "`OperatorDrawer` overlays the `390px` right column at `min(376px, 100vw)` using the same `#21201d` / `#262421` surface family, `4px` radius, `segmented-tabs`, and `.btn` hierarchy while never rendering any DOM nodes when `canTroll` is false.",
         "section": "components"
       }
     ],
     "dos": [
-      "**Do** preserve the three-column Chess.com proportions (`152px 1fr 376px`), warm charcoal-walnut surfaces (`#302e2b` / `#262522` / `#262421` / `#21201d`), and `4px`/`6px` radii across new views and modals.",
+      "**Do** preserve the Chess.com proportions (`148px 1fr 390px` locked to `100dvh` on desktop, `8px`-rounded right sidebar card), warm charcoal-walnut surfaces (`#302e2b` / `#262522` / `#262421` / `#21201d`), and `4px`/`6px` radii across new views and modals.",
+      "**Do** use `Tournament Green CTA` (`#4d7e23`, hover `#44711e`, `#355916` `3px` bottom bevel) for all white-text primary CTAs so every button meets WCAG AA contrast (`>=4.86:1`), reserving `#81b64c` for icons, links on dark ground, borders, and `#161512`-ink badges.",
       "**Do** invert active digital clocks cleanly to `Pure Chalk Ink` (`#ffffff`) background with `#21201d` tabular `JetBrains Mono` digits, keeping standby clocks recessed in `Obsidian Well` (`#21201d`).",
-      "**Do** keep `Tournament Green` (`#81b64c`) with its `3px` `#45752a` bottom bevel for primary match actions while leaving navigation and board controls neutral umber.",
+      "**Do** keep dragged pieces on the backgroundless `.floating-drag-piece` pointer layer (`touch-action: none` on `.chess-board`) with `.piece-wrap.is-dragging-origin` dimmed to `0.25`.",
       "**Do** honor `prefers-reduced-motion: reduce` across transitions, piece nudges, and sync spinners (`0.01ms`).",
       "**Do** gate all `OperatorDrawer`, evaluation bar, and hint-arrow markup behind `canTroll` so guests never see concealed tooling."
     ],
     "donts": [
-      "**Don't** introduce `box-shadow` elevation, glassmorphism blur, or neon accents onto panels, modals, or board frames.",
+      "**Don't** introduce drop-shadow `box-shadow` elevation, glassmorphism blur, or neon accents onto panels, modals, or board frames (the only `box-shadow` belongs to the flat inset `.sq-drag-hover` drop-target ring).",
+      "**Don't** place `#ffffff` text on `#81b64c` (`2.41:1` fails WCAG AA); always route white-ink buttons through `--green-btn` (`#4d7e23`).",
       "**Don't** break the `1:1` cream-and-sage board geometry (`#eeeed2` / `#769656`) or move coordinates outside the board squares.",
       "**Don't** omit `font-variant-numeric: tabular-nums` on clocks, algebraic move columns, or eval readouts.",
-      "**Don't** ship additional un-tokenized hex literals (such as `#f59e0b`, `#b33430`, `#e53935`, or `#f7f769`) or leave `Vesper64` naming leftovers in new surfaces; consolidate semantic alerts onto `:root` tokens and verify text contrast (note existing `#ffffff` on `#81b64c` CTAs and `#9e9c98` on `#f0f0ea` eval bars fall below WCAG AA 4.5:1)."
+      "**Don't** ship additional un-tokenized hex literals (such as `#2f2d2a`, `#3a3733`, `#f5b400`, `#5ea3e5`, `#e69d6c`, `#7cc4fa`, `#f59e0b`, `#b33430`, `#e53935`, or `#f7f769`) or leave `Vesper64` naming leftovers in new surfaces; consolidate semantic alerts onto `:root` tokens and fix `.eval-bar-num` `#9e9c98` over `#f0f0ea` (`2.40:1`, below WCAG AA 4.5:1)."
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, type DragEvent } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { getBoardMap, getLegalMovesFromSquare } from '../engine/chessCore';
 import type {
   GameVariant,
@@ -37,6 +37,18 @@ interface ChessBoardProps {
   onTrollSquareClick: (square: string) => void;
 }
 
+interface DragState {
+  fromSq: string;
+  color: PieceColor;
+  type: PieceType;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  size: number;
+  active: boolean;
+}
+
 function squareToPercent(square: string, flipped: boolean): { x: number; y: number } {
   const fileIdx = FILES.indexOf(square[0]);
   const rankIdx = RANKS.indexOf(square[1]);
@@ -70,8 +82,12 @@ export const ChessBoard = memo(function ChessBoard({
   onCancelPromotion,
   onTrollSquareClick,
 }: ChessBoardProps) {
+  const boardRef = useRef<HTMLDivElement | null>(null);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [dodgeOffsets, setDodgeOffsets] = useState<Record<string, { x: number; y: number }>>({});
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressNextClickRef = useRef(false);
 
   const boardMap = useMemo(() => getBoardMap(fen), [fen]);
 
@@ -152,7 +168,141 @@ export const ChessBoard = memo(function ChessBoard({
     );
   }
 
+  function canDragSquare(sq: string): boolean {
+    const piece = boardMap[sq];
+    if (!piece || isGameOver || isFakeReconnecting) return false;
+    if (canTroll && isSquareActionMode(armedTroll)) return false;
+
+    const allowSteal = canTroll && armedTroll?.type === 'steal_piece';
+    const allowTeleport = canTroll && armedTroll?.type === 'teleport';
+    return Boolean(
+      (allowSteal && piece.color !== playerColor && piece.type !== 'k') ||
+        (allowTeleport && piece.color === playerColor) ||
+        (canInteract && turnColor === playerColor && piece.color === playerColor)
+    );
+  }
+
+  function pointToSquare(clientX: number, clientY: number): string | null {
+    const el = boardRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
+      return null;
+    }
+    const col = Math.min(7, Math.max(0, Math.floor(((clientX - rect.left) / rect.width) * 8)));
+    const row = Math.min(7, Math.max(0, Math.floor(((clientY - rect.top) / rect.height) * 8)));
+    return `${displayFiles[col]}${displayRanks[row]}`;
+  }
+
+  const callbacksRef = useRef({
+    onAttemptMove,
+    displayFiles,
+    displayRanks,
+    legalTargets,
+    canTroll,
+    armedTroll,
+  });
+  callbacksRef.current = {
+    onAttemptMove,
+    displayFiles,
+    displayRanks,
+    legalTargets,
+    canTroll,
+    armedTroll,
+  };
+
+  // Smooth custom pointer drag (renders ONLY the SVG piece with zero background!)
+  useEffect(() => {
+    const handlePointerMove = (e: globalThis.PointerEvent) => {
+      const current = dragRef.current;
+      if (!current) return;
+      const dist = Math.hypot(e.clientX - current.startX, e.clientY - current.startY);
+      const active = current.active || dist >= 5;
+      const updated: DragState = {
+        ...current,
+        x: e.clientX,
+        y: e.clientY,
+        active,
+      };
+      dragRef.current = updated;
+      setDragState(updated);
+    };
+
+    const handlePointerUp = (e: globalThis.PointerEvent) => {
+      const current = dragRef.current;
+      if (!current) return;
+      dragRef.current = null;
+      setDragState(null);
+
+      if (!current.active) return;
+      suppressNextClickRef.current = true;
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false;
+      }, 40);
+
+      const el = boardRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        return;
+      }
+      const col = Math.min(7, Math.max(0, Math.floor(((e.clientX - rect.left) / rect.width) * 8)));
+      const row = Math.min(7, Math.max(0, Math.floor(((e.clientY - rect.top) / rect.height) * 8)));
+      const { displayFiles: df, displayRanks: dr, onAttemptMove: attempt } = callbacksRef.current;
+      const targetSq = `${df[col]}${dr[row]}`;
+
+      if (targetSq && targetSq !== current.fromSq) {
+        setSelectedSquare(null);
+        attempt(current.fromSq, targetSq);
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, []);
+
+  function handleSquarePointerDown(e: PointerEvent<HTMLButtonElement>, sq: string) {
+    if (e.button !== 0) return;
+    if (!canDragSquare(sq)) return;
+    const piece = getDisplayedPiece(sq);
+    if (!piece) return;
+
+    const boardRect = boardRef.current?.getBoundingClientRect();
+    const sqSize = boardRect ? boardRect.width / 8 : 64;
+
+    const initial: DragState = {
+      fromSq: sq,
+      color: piece.color,
+      type: piece.type,
+      startX: e.clientX,
+      startY: e.clientY,
+      x: e.clientX,
+      y: e.clientY,
+      size: sqSize * 0.88,
+      active: false,
+    };
+    dragRef.current = initial;
+    setSelectedSquare(sq);
+  }
+
   function handleSquareClick(sq: string) {
+    if (suppressNextClickRef.current) return;
     if (isGameOver || isFakeReconnecting) return;
 
     if (canTroll && isSquareActionMode(armedTroll)) {
@@ -215,37 +365,6 @@ export const ChessBoard = memo(function ChessBoard({
     }
   }
 
-  function handleDragStart(e: DragEvent<HTMLButtonElement>, sq: string) {
-    const piece = boardMap[sq];
-    if (!piece || isGameOver || isFakeReconnecting) {
-      e.preventDefault();
-      return;
-    }
-    const allowSteal = canTroll && armedTroll?.type === 'steal_piece';
-    const allowTeleport = canTroll && armedTroll?.type === 'teleport';
-    const canDragPiece =
-      (allowSteal && piece.color !== playerColor && piece.type !== 'k') ||
-      (allowTeleport && piece.color === playerColor) ||
-      (canInteract && turnColor === playerColor && piece.color === playerColor);
-
-    if (!canDragPiece) {
-      e.preventDefault();
-      return;
-    }
-
-    setSelectedSquare(sq);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', sq);
-  }
-
-  function handleDrop(e: DragEvent<HTMLButtonElement>, targetSq: string) {
-    e.preventDefault();
-    const fromSq = e.dataTransfer.getData('text/plain') || selectedSquare;
-    if (!fromSq || fromSq === targetSq) return;
-    setSelectedSquare(null);
-    onAttemptMove(fromSq, targetSq);
-  }
-
   function handleHoverDodge(sq: string) {
     if (!isButterfingers) return;
     const piece = boardMap[sq];
@@ -270,7 +389,8 @@ export const ChessBoard = memo(function ChessBoard({
         }
       : null;
 
-  // White advantage % for private Eval Bar (50% = 0.0)
+  const hoverSq = dragState?.active ? pointToSquare(dragState.x, dragState.y) : null;
+
   const whiteEvalPct = (() => {
     if (evalCp === null) return 50;
     const clamped = Math.max(-1000, Math.min(1000, evalCp));
@@ -282,10 +402,7 @@ export const ChessBoard = memo(function ChessBoard({
     <div className={`board-shell ${canTroll && showEvalBar ? 'has-eval-bar' : ''}`}>
       {canTroll && showEvalBar && (
         <div className="eval-bar" aria-label="Private engine evaluation bar">
-          <div
-            className="eval-bar-fill"
-            style={{ height: `${whiteEvalPct}%` }}
-          />
+          <div className="eval-bar-fill" style={{ height: `${whiteEvalPct}%` }} />
           <span className="eval-bar-num">
             {evalCp !== null ? (evalCp / 100).toFixed(1) : '0.0'}
           </span>
@@ -293,6 +410,7 @@ export const ChessBoard = memo(function ChessBoard({
       )}
 
       <div
+        ref={boardRef}
         className={`chess-board ${isTrollTargetMode ? 'is-armed' : ''} ${forcedFlip ? 'is-cursed-flip' : ''}`}
         role="grid"
         aria-label="Chessboard"
@@ -305,6 +423,8 @@ export const ChessBoard = memo(function ChessBoard({
             const isLight = (originalRankIdx + originalFileIdx) % 2 === 0;
             const piece = getDisplayedPiece(sq);
             const isSelected = selectedSquare === sq;
+            const isDragOrigin = dragState?.active && dragState.fromSq === sq;
+            const isDragHover = hoverSq === sq && legalTargets.has(sq);
             const isLast =
               effectiveLastMove?.from === sq || effectiveLastMove?.to === sq;
             const isTarget = legalTargets.has(sq);
@@ -329,13 +449,12 @@ export const ChessBoard = memo(function ChessBoard({
                 key={sq}
                 type="button"
                 role="gridcell"
+                data-square={sq}
                 aria-label={`Square ${sq}, ${pieceDesc}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onPointerDown={(e) => handleSquarePointerDown(e, sq)}
                 onClick={() => handleSquareClick(sq)}
                 onMouseEnter={() => handleHoverDodge(sq)}
-                draggable={Boolean(piece)}
-                onDragStart={(e) => handleDragStart(e, sq)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleDrop(e, sq)}
                 className={[
                   'board-sq',
                   isLight ? 'sq-light' : 'sq-dark',
@@ -344,6 +463,7 @@ export const ChessBoard = memo(function ChessBoard({
                   isKingInCheck ? 'sq-check' : '',
                   isCaptureTarget ? 'sq-capture' : '',
                   isKothHill ? 'sq-koth' : '',
+                  isDragHover ? 'sq-drag-hover' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -357,7 +477,7 @@ export const ChessBoard = memo(function ChessBoard({
 
                 {piece && (
                   <span
-                    className={`piece-wrap ${isDrunk ? 'is-drunk' : ''} ${hideAsGhost ? 'is-ghost' : ''}`}
+                    className={`piece-wrap ${isDrunk ? 'is-drunk' : ''} ${hideAsGhost ? 'is-ghost' : ''} ${isDragOrigin ? 'is-dragging-origin' : ''}`}
                     style={
                       dodge
                         ? { transform: `translate(${dodge.x}px, ${dodge.y}px)` }
@@ -446,6 +566,21 @@ export const ChessBoard = memo(function ChessBoard({
           </div>
         )}
       </div>
+
+      {/* Pure transparent piece floating under cursor — ZERO square background! */}
+      {dragState?.active && (
+        <div
+          className="floating-drag-piece"
+          style={{
+            width: `${dragState.size}px`,
+            height: `${dragState.size}px`,
+            transform: `translate3d(${dragState.x - dragState.size / 2}px, ${dragState.y - dragState.size / 2}px, 0)`,
+          }}
+          aria-hidden="true"
+        >
+          <ChessPiece color={dragState.color} type={dragState.type} />
+        </div>
+      )}
     </div>
   );
 });

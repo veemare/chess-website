@@ -171,3 +171,38 @@ export function SendIcon({ size = 15 }: { size?: number }) {
     </BaseIcon>
   );
 }
+
+export function BinocularsIcon({ size = 16 }: { size?: number }) {
+  return (
+    <BaseIcon size={size}>
+      <path d="M10 10h4" />
+      <path d="M19 7V4a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3" />
+      <path d="M9 7V4a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v3" />
+      <circle cx="7" cy="14" r="4" />
+      <circle cx="17" cy="14" r="4" />
+      <path d="M10.5 11.5L13.5 11.5" />
+    </BaseIcon>
+  );
+}
+
+export function HandshakeIcon({ size = 18 }: { size?: number }) {
+  return (
+    <BaseIcon size={size}>
+      <path d="m11 17 2 2a1 1 0 1 0 3-3" />
+      <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4" />
+      <path d="m21 3 1 11h-2" />
+      <path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3" />
+      <path d="M3 4h8" />
+    </BaseIcon>
+  );
+}
+
+export function CubeVariantIcon({ size = 18 }: { size?: number }) {
+  return (
+    <BaseIcon size={size}>
+      <path d="m21 16-9 5-9-5V8l9-5 9 5v8z" />
+      <path d="m3.3 7 8.7 5 8.7-5" />
+      <path d="M12 22V12" />
+    </BaseIcon>
+  );
+}

@@ -6,12 +6,15 @@ import {
   loginAccount,
   logoutAccount,
   registerAccount,
+  setOwnerUserTitle,
 } from '../services/api';
 import type { PublicUser } from '../types/chess';
+import { TitleBadge } from './TitleBadge';
 import { CloseIcon, ShieldIcon, UserIcon } from './Icons';
 
 interface AccountModalProps {
   open: boolean;
+  initialAuthMode?: 'login' | 'register';
   guestName: string;
   user: PublicUser | null;
   hasOwner: boolean;
@@ -20,6 +23,7 @@ interface AccountModalProps {
   onGuestNameChange: (name: string) => void;
   onUserUpdated: (user: PublicUser | null, hasOwner?: boolean) => void;
   onOpenOperatorDrawer: () => void;
+  onOpenProfile?: (username: string) => void;
 }
 
 type ModalTab = 'account' | 'owner';
@@ -40,6 +44,7 @@ function formatCountdown(expiresAt: number | null): string {
 
 export function AccountModal({
   open,
+  initialAuthMode = 'login',
   guestName,
   user,
   hasOwner,
@@ -48,9 +53,10 @@ export function AccountModal({
   onGuestNameChange,
   onUserUpdated,
   onOpenOperatorDrawer,
+  onOpenProfile,
 }: AccountModalProps) {
   const [tab, setTab] = useState<ModalTab>('account');
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [authMode, setAuthMode] = useState<AuthMode>(initialAuthMode);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [claimCode, setClaimCode] = useState('');
@@ -64,6 +70,9 @@ export function AccountModal({
   const [usersLoading, setUsersLoading] = useState(false);
   const [targetUser, setTargetUser] = useState('');
   const [tempMinutes, setTempMinutes] = useState(60);
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [titleTarget, setTitleTarget] = useState('');
+  const [titleValue, setTitleValue] = useState('GM');
 
   useEffect(() => {
     setLocalGuest(guestName);
@@ -73,10 +82,11 @@ export function AccountModal({
     if (!open) return;
     setError(null);
     setNotice(null);
+    setAuthMode(initialAuthMode);
     if (user?.role === 'owner' && tab === 'owner') {
       void loadUsers();
     }
-  }, [open, tab, user?.role]);
+  }, [open, tab, user?.role, initialAuthMode]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,16 +97,38 @@ export function AccountModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  async function loadUsers() {
+  async function loadUsers(searchQuery = ownerSearch) {
     setUsersLoading(true);
     setError(null);
     try {
-      const res = await fetchOwnerUsers();
+      const res = await fetchOwnerUsers(searchQuery);
       setManagedUsers(res.users);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load accounts.');
+      setError(err instanceof Error ? err.message : 'Could not load registered users.');
     } finally {
       setUsersLoading(false);
+    }
+  }
+
+  async function handleSetTitle(username: string, title: string | null) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await setOwnerUserTitle(username, title);
+      setManagedUsers(res.users);
+      if (user && res.updated.id === user.id) {
+        onUserUpdated(res.updated);
+      }
+      setNotice(
+        title?.trim()
+          ? `Assigned title "${title.trim()}" to @${res.updated.username}.`
+          : `Removed title from @${res.updated.username}.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update title.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -523,22 +555,105 @@ export function AccountModal({
 
             <div className="hairline-divider" />
 
+            <form
+              className="owner-grant-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!titleTarget.trim()) return;
+                void handleSetTitle(titleTarget, titleValue);
+              }}
+            >
+              <label className="field-label" htmlFor="title-target-username">
+                Assign chess title (Owner only)
+              </label>
+              <div className="inline-input-row">
+                <input
+                  id="title-target-username"
+                  type="text"
+                  className="text-input"
+                  value={titleTarget}
+                  onChange={(e) => setTitleTarget(e.target.value)}
+                  placeholder="Username"
+                />
+                <input
+                  type="text"
+                  className="text-input duration-input"
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  maxLength={16}
+                  placeholder="GM"
+                  aria-label="Custom title"
+                />
+              </div>
+              <div className="title-preset-row">
+                {['GM', 'IM', 'FM', 'NM', 'CM', 'WGM', 'VIP'].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={`mini-pill ${titleValue === preset ? 'is-active' : ''}`}
+                    onClick={() => setTitleValue(preset)}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <div className="grant-preset-row">
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  disabled={busy || !titleTarget.trim() || !titleValue.trim()}
+                >
+                  Set Title
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={busy || !titleTarget.trim()}
+                  onClick={() => void handleSetTitle(titleTarget, null)}
+                >
+                  Clear Title
+                </button>
+              </div>
+            </form>
+
+            <div className="hairline-divider" />
+
             <div className="owner-users-header">
-              <span className="field-label">Registered accounts ({managedUsers.length})</span>
+              <span className="field-label">User database ({managedUsers.length})</span>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => void loadUsers()}
+                onClick={() => void loadUsers(ownerSearch)}
                 disabled={usersLoading}
               >
                 {usersLoading ? 'Loading…' : 'Refresh'}
               </button>
             </div>
 
+            <form
+              className="owner-search-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void loadUsers(ownerSearch);
+              }}
+            >
+              <input
+                type="text"
+                className="text-input"
+                placeholder="Search database by username or title..."
+                value={ownerSearch}
+                onChange={(e) => setOwnerSearch(e.target.value)}
+              />
+              <button type="submit" className="btn btn-secondary btn-sm" disabled={usersLoading}>
+                Search
+              </button>
+            </form>
+
             <div className="owner-user-list">
               {managedUsers.map((u) => (
                 <div key={u.id} className="owner-user-row">
                   <div className="owner-user-meta">
+                    <TitleBadge title={u.title} />
                     <span className="owner-username">@{u.username}</span>
                     <span
                       className={`mono-badge ${u.trollAccess.active ? 'is-accent' : ''}`}
@@ -550,16 +665,36 @@ export function AccountModal({
                           : 'Standard'}
                     </span>
                   </div>
-                  {u.role !== 'owner' && (
-                    <div className="owner-row-actions">
+                  <div className="owner-row-actions">
+                    {onOpenProfile && (
                       <button
                         type="button"
                         className="btn btn-ghost btn-xs"
-                        disabled={busy}
-                        onClick={() => void handleGrant(u.username, 'temporary', 60)}
+                        onClick={() => {
+                          onClose();
+                          onOpenProfile(u.username);
+                        }}
                       >
-                        1h
+                        Profile
                       </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => setTitleTarget(u.username)}
+                    >
+                      Title
+                    </button>
+                    {u.role !== 'owner' && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          disabled={busy}
+                          onClick={() => void handleGrant(u.username, 'temporary', 60)}
+                        >
+                          1h
+                        </button>
                       <button
                         type="button"
                         className="btn btn-ghost btn-xs"
@@ -586,8 +721,9 @@ export function AccountModal({
                           Revoke
                         </button>
                       )}
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
               {managedUsers.length === 0 && !usersLoading && (

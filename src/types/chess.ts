@@ -58,8 +58,21 @@ export interface PublicUser {
   username: string;
   displayName: string;
   role: 'owner' | 'user';
+  title: string | null;
+  bio: string;
   createdAt: number;
   trollAccess: TrollAccessSummary;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'owner' | 'user';
+  title: string | null;
+  bio: string;
+  createdAt: number;
+  online: boolean;
 }
 
 export interface FriendSummary {
@@ -94,6 +107,34 @@ export interface DirectChallengeSummary {
   hostColor: PieceColor;
   status: 'pending' | 'accepted' | 'declined' | 'cancelled';
   createdAt: number;
+}
+
+export type WatchFilterMode = 'all' | 'pvp' | 'bot';
+
+export interface LiveWatchGameSummary {
+  gameId: string;
+  mode: 'pvp' | 'bot';
+  whiteName: string;
+  blackName: string;
+  variant: GameVariant;
+  timeControlLabel: string;
+  moveCount: number;
+  status: GameStatus;
+  statusReason: string | null;
+  updatedAt: number;
+  fen: string;
+}
+
+export interface LiveWatchGameFull extends LiveWatchGameSummary {
+  baseMs: number;
+  incMs: number;
+  moves: MoveRecord[];
+  lastMove: LastMoveHighlight | null;
+  whiteMs: number;
+  blackMs: number;
+  whiteChecks: number;
+  blackChecks: number;
+  lastTickAt: number | null;
 }
 
 export interface SocialStateResponse {

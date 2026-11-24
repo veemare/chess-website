@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountModal } from './components/AccountModal';
+import { ProfileModal } from './components/ProfileModal';
+import { TitleBadge } from './components/TitleBadge';
 import { ChessBoard } from './components/ChessBoard';
 import { FriendsModal } from './components/FriendsModal';
 import {
+  BinocularsIcon,
+  BoltIcon,
   BotIcon,
   BrandCrownIcon,
   CheckIcon,
   CopyIcon,
+  CubeVariantIcon,
   DrawIcon,
   FlagIcon,
   FlipIcon,
+  HandshakeIcon,
   SendIcon,
   UserIcon,
   UsersIcon,
@@ -39,6 +45,10 @@ import { queryEngineAsync } from './engine/workerClient';
 import {
   fetchAuthMe,
   fetchSocialState,
+  fetchWatchGame,
+  fetchWatchGames,
+  publishWatchGame,
+  removeWatchGame,
   respondDirectChallenge,
   sendDirectChallenge,
 } from './services/api';
@@ -52,6 +62,8 @@ import {
   type DirectChallengeSummary,
   type FriendSummary,
   type GameVariant,
+  type LiveWatchGameFull,
+  type LiveWatchGameSummary,
   type OpponentCurseState,
   type PieceColor,
   type PieceType,
@@ -60,11 +72,14 @@ import {
   type RoomWireMessage,
   type SocialStateResponse,
   type TrollArmedAction,
+  type WatchFilterMode,
 } from './types/chess';
 
 const GUEST_STORAGE_KEY = 'vesper64_guest_name';
 
 type TimerCategory = 'Bullet' | 'Blitz' | 'Rapid' | 'Custom';
+type ArenaMode = 'friend' | 'bot' | 'watch';
+type RightSetupView = 'menu' | 'setup_online' | 'setup_bot' | 'setup_join';
 
 function createInitialGameState(input: {
   variant: GameVariant;
@@ -141,7 +156,7 @@ function loadGuestName(): string {
   } catch {
     // Ignore storage issues
   }
-  return `Guest-${Math.floor(100 + Math.random() * 900)}`;
+  return 'Player';
 }
 
 function parseRoomFromUrl(): string | null {
@@ -180,6 +195,7 @@ export default function App() {
   const transportRef = useRef<RoomTransport | null>(null);
   const brandClickTimestampsRef = useRef<number[]>([]);
   const socialBusyRef = useRef(false);
+  const activeWatchPublishIdRef = useRef<string | null>(null);
 
   // Auth & optional account state
   const [user, setUser] = useState<PublicUser | null>(null);
@@ -187,13 +203,17 @@ export default function App() {
   const [requiresClaimCode, setRequiresClaimCode] = useState(false);
   const [guestName, setGuestName] = useState<string>(loadGuestName);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileModalUser, setProfileModalUser] = useState<string | null>(null);
+  const [accountAuthMode, setAccountAuthMode] = useState<'login' | 'register'>('login');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [social, setSocial] = useState<SocialStateResponse>(emptySocial);
   const [muted, setMuted] = useState(() => isSoundsMuted());
   const [nowTick, setNowTick] = useState(() => Date.now());
 
-  // Lobby & Variant / Timer config
-  const [arenaMode, setArenaMode] = useState<'friend' | 'bot'>('friend');
+  // Navigation & Variant / Timer config
+  const [arenaMode, setArenaMode] = useState<ArenaMode>('friend');
+  const [rightSetupView, setRightSetupView] = useState<RightSetupView>('menu');
   const [selectedVariant, setSelectedVariant] = useState<GameVariant>('standard');
   const [timerCategory, setTimerCategory] = useState<TimerCategory>('Blitz');
   const [selectedTimeControl, setSelectedTimeControl] = useState<string>('5+0');
@@ -221,6 +241,13 @@ export default function App() {
   );
   const [joinInput, setJoinInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Watch Live Games state
+  const [watchFilter, setWatchFilter] = useState<WatchFilterMode>('all');
+  const [watchList, setWatchList] = useState<LiveWatchGameSummary[]>([]);
+  const [watchLoading, setWatchLoading] = useState(false);
+  const [spectatingGame, setSpectatingGame] = useState<LiveWatchGameFull | null>(null);
+  const [spectateOrientation, setSpectateOrientation] = useState<PieceColor>('w');
 
   // Match & board state
   const [localColor, setLocalColor] = useState<PieceColor>('w');
@@ -299,7 +326,7 @@ export default function App() {
         setRequiresClaimCode(res.requiresClaimCode);
       })
       .catch(() => {
-        // Offline/static fallback keeps guest mode working
+        // Static offline fallback keeps guest mode working
       });
   }, []);
 
@@ -329,6 +356,48 @@ export default function App() {
     }, 8000);
     return () => window.clearInterval(id);
   }, [user, refreshSocial]);
+
+  const refreshWatchList = useCallback(async (filter: WatchFilterMode) => {
+    setWatchLoading(true);
+    try {
+      const res = await fetchWatchGames(filter);
+      setWatchList(res.games);
+    } catch {
+      // Keep previous list on transient error
+    } finally {
+      setWatchLoading(false);
+    }
+  }, []);
+
+  // Poll Watch game list or active spectated game
+  useEffect(() => {
+    if (arenaMode !== 'watch') return;
+
+    if (!spectatingGame) {
+      void refreshWatchList(watchFilter);
+      const id = window.setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void refreshWatchList(watchFilter);
+        }
+      }, 4000);
+      return () => window.clearInterval(id);
+    }
+
+    const specId = spectatingGame.gameId;
+    const pollGame = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await fetchWatchGame(specId);
+        setSpectatingGame(res.game);
+      } catch {
+        // Keep current frame if ended/removed
+      }
+    };
+    const id = window.setInterval(() => {
+      void pollGame();
+    }, 1500);
+    return () => window.clearInterval(id);
+  }, [arenaMode, watchFilter, spectatingGame?.gameId, refreshWatchList]);
 
   useEffect(() => {
     if (!user?.trollAccess.active || user.trollAccess.permanent) return;
@@ -375,10 +444,63 @@ export default function App() {
   localColorRef.current = localColor;
   const localDisplayNameRef = useRef(localDisplayName);
   localDisplayNameRef.current = localDisplayName;
+  const opponentNameRef = useRef(opponentName);
+  opponentNameRef.current = opponentName;
   const cursesSentRef = useRef(cursesSent);
   cursesSentRef.current = cursesSent;
   const inviteJoinedRef = useRef(inviteJoined);
   inviteJoinedRef.current = inviteJoined;
+
+  // Publish active PvP (host) or Bot match snapshots to the live Watch stream
+  const publishLiveSnapshot = useCallback(
+    (state: AuthoritativeGameState, mode: 'pvp' | 'bot', gid: string, oppLabel: string) => {
+      const whiteName = localColorRef.current === 'w' ? localDisplayNameRef.current : oppLabel;
+      const blackName = localColorRef.current === 'b' ? localDisplayNameRef.current : oppLabel;
+      activeWatchPublishIdRef.current = gid;
+      void publishWatchGame({
+        gameId: gid,
+        mode,
+        whiteName,
+        blackName,
+        variant: state.variant,
+        timeControlLabel: state.timeControlLabel,
+        baseMs: state.baseMs,
+        incMs: state.incMs,
+        fen: state.fen,
+        moves: state.moves,
+        lastMove: state.lastMove,
+        whiteMs: state.whiteMs,
+        blackMs: state.blackMs,
+        whiteChecks: state.whiteChecks,
+        blackChecks: state.blackChecks,
+        lastTickAt: state.lastTickAt,
+        status: state.status,
+        statusReason: state.statusReason,
+      }).catch(() => undefined);
+    },
+    []
+  );
+
+  // Sync PvP host & Bot games to Watch stream whenever state version changes
+  useEffect(() => {
+    if (arenaMode === 'bot') {
+      const gid = activeWatchPublishIdRef.current || `bot-${clientIdRef.current.slice(0, 8)}`;
+      publishLiveSnapshot(gameState, 'bot', gid, opponentNameRef.current);
+      return;
+    }
+    if (arenaMode === 'friend' && roomCode && isHost && inviteJoined) {
+      publishLiveSnapshot(gameState, 'pvp', `pvp-${roomCode}`, opponentNameRef.current);
+    }
+  }, [
+    arenaMode,
+    roomCode,
+    isHost,
+    inviteJoined,
+    gameState.version,
+    gameState.status,
+    publishLiveSnapshot,
+    gameState,
+  ]);
 
   const pushSystemChat = useCallback((text: string) => {
     setChatMessages((prev) => [
@@ -615,7 +737,7 @@ export default function App() {
     cursesReceived.fakeOutcomeUntil,
   ]);
 
-  // Bot turn execution in background Web Worker (0ms main-thread freeze!)
+  // Bot turn execution in background Web Worker (0ms main-thread freeze)
   useEffect(() => {
     if (arenaMode !== 'bot' || gameState.status !== 'active') return;
     const turn = getTurnFromFen(gameState.fen);
@@ -723,9 +845,9 @@ export default function App() {
     };
   }, [arenaMode, gameState.fen, gameState.status, localColor]);
 
-  // Compute private Arbiter eval & best move asynchronously in Web Worker (zero UI lag!)
+  // Private Arbiter eval in Web Worker
   useEffect(() => {
-    if (!canTroll || (!drawerOpen && !showEngineHint && !showEvalBar)) {
+    if (!canTroll || (!drawerOpen && !showEngineHint && !showEvalBar) || arenaMode === 'watch') {
       setEngineHint(null);
       return;
     }
@@ -747,7 +869,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [canTroll, drawerOpen, showEngineHint, showEvalBar, gameState.fen, gameState.status]);
+  }, [canTroll, drawerOpen, showEngineHint, showEvalBar, arenaMode, gameState.fen, gameState.status]);
 
   const handleClockTimeout = useCallback(
     (timedOutColor: PieceColor) => {
@@ -847,7 +969,7 @@ export default function App() {
   }
 
   function handleAttemptMove(from: string, to: string) {
-    if (gameState.status !== 'active') return;
+    if (arenaMode === 'watch' || gameState.status !== 'active') return;
     const turn = getTurnFromFen(gameState.fen);
 
     if (canTroll && (armedTroll?.type === 'teleport' || armedTroll?.type === 'steal_piece')) {
@@ -993,6 +1115,14 @@ export default function App() {
     }
   }
 
+  function cleanupPublishedWatch() {
+    if (activeWatchPublishIdRef.current) {
+      const oldId = activeWatchPublishIdRef.current;
+      activeWatchPublishIdRef.current = null;
+      void removeWatchGame(oldId).catch(() => undefined);
+    }
+  }
+
   function startHostedRoom(opts: {
     variant: GameVariant;
     timeControlId: string;
@@ -1002,11 +1132,13 @@ export default function App() {
     preferred: 'random' | PieceColor;
     friendLabel?: string;
   }) {
+    cleanupPublishedWatch();
     const code = generateRoomCode();
     const chosenColor: PieceColor =
       opts.preferred === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : opts.preferred;
 
     setArenaMode('friend');
+    setSpectatingGame(null);
     setIsHost(true);
     setInviteJoined(false);
     setInvitePreview(null);
@@ -1092,6 +1224,7 @@ export default function App() {
   }
 
   async function handleAcceptDirectChallenge(challenge: DirectChallengeSummary) {
+    cleanupPublishedWatch();
     try {
       await respondDirectChallenge(challenge.id, 'accept');
     } catch {
@@ -1099,6 +1232,7 @@ export default function App() {
     }
     const assignedColor: PieceColor = challenge.hostColor === 'w' ? 'b' : 'w';
     setArenaMode('friend');
+    setSpectatingGame(null);
     setIsHost(false);
     setInviteJoined(true);
     setInvitePreview(null);
@@ -1145,7 +1279,9 @@ export default function App() {
     const clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (clean.length < 4 || clean.length > 12) return;
 
+    cleanupPublishedWatch();
     setArenaMode('friend');
+    setSpectatingGame(null);
     setIsHost(false);
     setInviteJoined(false);
     setInvitePreview(null);
@@ -1187,6 +1323,7 @@ export default function App() {
   }
 
   function handleLeaveRoom() {
+    cleanupPublishedWatch();
     transportRef.current?.destroy();
     transportRef.current = null;
     setRoomCode(null);
@@ -1202,6 +1339,7 @@ export default function App() {
     setDrawOfferedBy(null);
     setRematchRequested(false);
     setPendingPromotion(null);
+    setRightSetupView('menu');
     setGameState(
       createInitialGameState({
         variant: selectedVariant,
@@ -1220,18 +1358,24 @@ export default function App() {
     window.history.replaceState({}, '', nextUrl.toString());
   }
 
-  function handleStartBotMatch(colorChoice: PieceColor = 'w') {
+  function handleStartBotMatch(colorChoice?: PieceColor) {
+    cleanupPublishedWatch();
     transportRef.current?.destroy();
     transportRef.current = null;
+    const chosen: PieceColor =
+      colorChoice ??
+      (preferredColor === 'random' ? (Math.random() > 0.5 ? 'w' : 'b') : preferredColor);
+    activeWatchPublishIdRef.current = `bot-${crypto.randomUUID().slice(0, 8)}`;
     setArenaMode('bot');
+    setSpectatingGame(null);
     setRoomCode(null);
     setInviteJoined(false);
     setInvitePreview(null);
     setChallengedFriendName(null);
     setNetworkMode('idle');
-    setOpponentName('Bot');
-    setLocalColor(colorChoice);
-    setBoardOrientation(colorChoice);
+    setOpponentName('Chess Bot');
+    setLocalColor(chosen);
+    setBoardOrientation(chosen);
     setDrawOfferedBy(null);
     setRematchRequested(false);
     setPendingPromotion(null);
@@ -1250,6 +1394,16 @@ export default function App() {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.delete('room');
     window.history.replaceState({}, '', nextUrl.toString());
+  }
+
+  async function handleStartSpectating(summary: LiveWatchGameSummary) {
+    try {
+      const res = await fetchWatchGame(summary.gameId);
+      setSpectatingGame(res.game);
+      setSpectateOrientation('w');
+    } catch {
+      void refreshWatchList(watchFilter);
+    }
   }
 
   function handleCopyInvite() {
@@ -1520,31 +1674,37 @@ export default function App() {
     });
   }
 
-  // Memoized derived values (only recompute when fen/moves change, NOT on clock ticks!)
-  const currentTurn = useMemo(() => getTurnFromFen(gameState.fen), [gameState.fen]);
+  // Active display state (Spectator vs Player)
+  const isSpectating = arenaMode === 'watch' && Boolean(spectatingGame);
+  const displayFen = isSpectating && spectatingGame ? spectatingGame.fen : gameState.fen;
+  const displayVariant = isSpectating && spectatingGame ? spectatingGame.variant : gameState.variant;
+  const displayMoves = isSpectating && spectatingGame ? spectatingGame.moves : gameState.moves;
+  const displayLastMove = isSpectating && spectatingGame ? spectatingGame.lastMove : gameState.lastMove;
+  const displayStatus = isSpectating && spectatingGame ? spectatingGame.status : gameState.status;
+  const displayStatusReason = isSpectating && spectatingGame ? spectatingGame.statusReason : gameState.statusReason;
+  const displayBaseMs = isSpectating && spectatingGame ? spectatingGame.baseMs : gameState.baseMs;
+  const displayWChecks = isSpectating && spectatingGame ? spectatingGame.whiteChecks : gameState.whiteChecks;
+  const displayBChecks = isSpectating && spectatingGame ? spectatingGame.blackChecks : gameState.blackChecks;
+  const displayOrientation = isSpectating ? spectateOrientation : boardOrientation;
+
+  const currentTurn = useMemo(() => getTurnFromFen(displayFen), [displayFen]);
   const outcome = useMemo(
-    () =>
-      getOutcomeFromFen(
-        gameState.fen,
-        gameState.variant,
-        gameState.whiteChecks,
-        gameState.blackChecks
-      ),
-    [gameState.fen, gameState.variant, gameState.whiteChecks, gameState.blackChecks]
+    () => getOutcomeFromFen(displayFen, displayVariant, displayWChecks, displayBChecks),
+    [displayFen, displayVariant, displayWChecks, displayBChecks]
   );
-  const captured = useMemo(() => getCapturedPieces(gameState.fen), [gameState.fen]);
+  const captured = useMemo(() => getCapturedPieces(displayFen), [displayFen]);
 
   const movePairs = useMemo(() => {
     const pairs: Array<{ num: number; white?: string; black?: string }> = [];
-    for (let i = 0; i < gameState.moves.length; i += 2) {
+    for (let i = 0; i < displayMoves.length; i += 2) {
       pairs.push({
         num: Math.floor(i / 2) + 1,
-        white: gameState.moves[i]?.san,
-        black: gameState.moves[i + 1]?.san,
+        white: displayMoves[i]?.san,
+        black: displayMoves[i + 1]?.san,
       });
     }
     return pairs;
-  }, [gameState.moves]);
+  }, [displayMoves]);
 
   const isWaitingAtInviteGate =
     arenaMode === 'friend' &&
@@ -1553,25 +1713,52 @@ export default function App() {
 
   const isMatchView = Boolean(roomCode) || arenaMode === 'bot';
 
-  const topColor: PieceColor = boardOrientation === 'w' ? 'b' : 'w';
-  const bottomColor: PieceColor = boardOrientation;
+  const topColor: PieceColor = displayOrientation === 'w' ? 'b' : 'w';
+  const bottomColor: PieceColor = displayOrientation;
 
-  const topMs = topColor === 'w' ? gameState.whiteMs : gameState.blackMs;
-  const bottomMs = bottomColor === 'w' ? gameState.whiteMs : gameState.blackMs;
-  const clocksLive = gameState.status === 'active' && gameState.moves.length > 0;
+  const topMs = isSpectating && spectatingGame
+    ? topColor === 'w'
+      ? spectatingGame.whiteMs
+      : spectatingGame.blackMs
+    : topColor === 'w'
+      ? gameState.whiteMs
+      : gameState.blackMs;
+
+  const bottomMs = isSpectating && spectatingGame
+    ? bottomColor === 'w'
+      ? spectatingGame.whiteMs
+      : spectatingGame.blackMs
+    : bottomColor === 'w'
+      ? gameState.whiteMs
+      : gameState.blackMs;
+
+  const clocksLive = displayStatus === 'active' && displayMoves.length > 0;
   const topRunning = clocksLive && currentTurn === topColor;
   const bottomRunning = clocksLive && currentTurn === bottomColor;
 
-  const topLabel = topColor === localColor ? localDisplayName : opponentName;
-  const bottomLabel = bottomColor === localColor ? localDisplayName : opponentName;
+  const topLabel = isSpectating && spectatingGame
+    ? topColor === 'w'
+      ? spectatingGame.whiteName
+      : spectatingGame.blackName
+    : topColor === localColor
+      ? localDisplayName
+      : opponentName;
+
+  const bottomLabel = isSpectating && spectatingGame
+    ? bottomColor === 'w'
+      ? spectatingGame.whiteName
+      : spectatingGame.blackName
+    : bottomColor === localColor
+      ? localDisplayName
+      : opponentName;
 
   const topCaptured = topColor === 'w' ? captured.whiteCaptured : captured.blackCaptured;
   const bottomCaptured = bottomColor === 'w' ? captured.whiteCaptured : captured.blackCaptured;
   const topAdv = topColor === 'w' ? captured.whiteAdvantage : -captured.whiteAdvantage;
   const bottomAdv = bottomColor === 'w' ? captured.whiteAdvantage : -captured.whiteAdvantage;
 
-  const topChecks = topColor === 'w' ? gameState.whiteChecks : gameState.blackChecks;
-  const bottomChecks = bottomColor === 'w' ? gameState.whiteChecks : gameState.blackChecks;
+  const topChecks = topColor === 'w' ? displayWChecks : displayBChecks;
+  const bottomChecks = bottomColor === 'w' ? displayWChecks : displayBChecks;
 
   const evalDisplay = useMemo(() => {
     if (!engineHint) return '0.00';
@@ -1580,6 +1767,7 @@ export default function App() {
   }, [engineHint]);
 
   const canPlayInteract =
+    arenaMode !== 'watch' &&
     gameState.status === 'active' &&
     (arenaMode === 'bot'
       ? currentTurn === localColor
@@ -1588,7 +1776,7 @@ export default function App() {
         : true);
 
   const activeVariantLabel =
-    GAME_VARIANTS.find((v) => v.id === gameState.variant)?.label || 'Standard';
+    GAME_VARIANTS.find((v) => v.id === displayVariant)?.label || 'Standard';
 
   const socialUnread = social.incomingRequests.length + social.incomingChallenges.length;
   const oppColor: PieceColor = localColor === 'w' ? 'b' : 'w';
@@ -1602,7 +1790,7 @@ export default function App() {
 
   return (
     <div className="chesscom-shell">
-      {/* Left Navigation Sidebar (Chess.com style) */}
+      {/* Left Navigation Sidebar (Chess.com 1-to-1) */}
       <aside className="left-nav">
         <div className="left-nav-top">
           <button
@@ -1618,10 +1806,14 @@ export default function App() {
           <nav className="left-nav-links" aria-label="Main navigation">
             <button
               type="button"
-              className={`left-nav-item ${arenaMode === 'friend' ? 'is-active' : ''}`}
+              className={`left-nav-item ${arenaMode !== 'watch' ? 'is-active' : ''}`}
               onClick={() => {
                 setArenaMode('friend');
-                if (!roomCode) setOpponentName('Opponent');
+                setSpectatingGame(null);
+                if (!roomCode) {
+                  setRightSetupView('menu');
+                  setOpponentName('Opponent');
+                }
               }}
             >
               <FlipIcon size={17} />
@@ -1630,11 +1822,15 @@ export default function App() {
 
             <button
               type="button"
-              className={`left-nav-item ${arenaMode === 'bot' ? 'is-active' : ''}`}
-              onClick={() => handleStartBotMatch('w')}
+              className={`left-nav-item ${arenaMode === 'watch' ? 'is-active' : ''}`}
+              onClick={() => {
+                setArenaMode('watch');
+                setSpectatingGame(null);
+                void refreshWatchList(watchFilter);
+              }}
             >
-              <BotIcon size={17} />
-              <span>Bots</span>
+              <BinocularsIcon size={17} />
+              <span>Watch</span>
             </button>
 
             <button
@@ -1650,30 +1846,71 @@ export default function App() {
         </div>
 
         <div className="left-nav-bottom">
+          {!user ? (
+            <>
+              <button
+                type="button"
+                className="btn btn-green left-auth-btn"
+                onClick={() => {
+                  setAccountAuthMode('register');
+                  setAccountModalOpen(true);
+                }}
+              >
+                Sign Up
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary left-auth-btn"
+                onClick={() => {
+                  setAccountAuthMode('login');
+                  setAccountModalOpen(true);
+                }}
+              >
+                Log In
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="left-nav-account"
+                onClick={() => {
+                  setAccountAuthMode('login');
+                  setAccountModalOpen(true);
+                }}
+              >
+                <UserIcon size={15} />
+                <TitleBadge title={user.title} />
+                <span>@{user.username}</span>
+              </button>
+              <button
+                type="button"
+                className="left-nav-sound"
+                onClick={() => {
+                  setProfileModalUser(user.username);
+                  setProfileModalOpen(true);
+                }}
+              >
+                My Profile
+              </button>
+            </>
+          )}
+
           <button
             type="button"
-            className="left-nav-item"
+            className="left-nav-sound"
             onClick={() => {
               const next = !muted;
               setMuted(next);
               setSoundsMuted(next);
             }}
           >
-            <span>{muted ? 'Sound: Off' : 'Sound: On'}</span>
-          </button>
-
-          <button
-            type="button"
-            className="left-nav-account"
-            onClick={() => setAccountModalOpen(true)}
-          >
-            <UserIcon size={15} />
-            <span>{user ? `@${user.username}` : guestName}</span>
+            {muted ? 'Sound: Off' : 'Sound: On'}
           </button>
         </div>
       </aside>
 
-      {/* Center Stage: Player Bars + Chessboard (or Invite Gate) */}
+      {/* Center Board Stage */}
       <main className="chesscom-center">
         <div className="center-board-col">
           {social.incomingChallenges.length > 0 && (
@@ -1826,17 +2063,19 @@ export default function App() {
             </div>
           ) : (
             <>
-              {(gameState.statusReason || drawOfferedBy || (!canTroll && cursesReceived.arbiterNotice)) && (
+              {(displayStatusReason ||
+                (!isSpectating && drawOfferedBy) ||
+                (!isSpectating && !canTroll && cursesReceived.arbiterNotice)) && (
                 <div className="match-banner" role="status">
                   <span>
-                    {gameState.statusReason ||
+                    {displayStatusReason ||
                       (drawOfferedBy && drawOfferedBy !== localColor
                         ? 'Opponent offered a draw'
                         : drawOfferedBy === localColor
                           ? 'Draw offer sent'
                           : cursesReceived.arbiterNotice)}
                   </span>
-                  {drawOfferedBy && drawOfferedBy !== localColor && gameState.status === 'active' && (
+                  {!isSpectating && drawOfferedBy && drawOfferedBy !== localColor && gameState.status === 'active' && (
                     <div className="banner-actions">
                       <button
                         type="button"
@@ -1863,40 +2102,46 @@ export default function App() {
               <PlayerClockStrip
                 playerName={topLabel}
                 color={topColor}
-                baseMs={gameState.baseMs}
+                baseMs={displayBaseMs}
                 syncedMs={topMs}
-                lastTickAt={gameState.lastTickAt}
+                lastTickAt={isSpectating && spectatingGame ? spectatingGame.lastTickAt : gameState.lastTickAt}
                 isRunning={topRunning}
-                isFrozen={gameState.frozenColor === topColor}
-                speedMultiplier={gameState.clockSpeedMultiplier?.[topColor] ?? 1}
+                isFrozen={!isSpectating && gameState.frozenColor === topColor}
+                speedMultiplier={!isSpectating ? (gameState.clockSpeedMultiplier?.[topColor] ?? 1) : 1}
                 capturedPieces={topCaptured}
                 materialAdvantage={topAdv}
                 checksCount={topChecks}
-                showChecks={gameState.variant === 'three_check'}
-                onTimeout={handleClockTimeout}
+                showChecks={displayVariant === 'three_check'}
+                onTimeout={isSpectating ? () => undefined : handleClockTimeout}
               />
 
               <ChessBoard
-                fen={gameState.fen}
-                variant={gameState.variant}
-                orientation={boardOrientation}
-                playerColor={arenaMode === 'friend' && !roomCode ? currentTurn : localColor}
+                fen={displayFen}
+                variant={displayVariant}
+                orientation={displayOrientation}
+                playerColor={
+                  isSpectating
+                    ? 'w'
+                    : arenaMode === 'friend' && !roomCode
+                      ? currentTurn
+                      : localColor
+                }
                 turnColor={currentTurn}
                 canInteract={canPlayInteract}
-                isGameOver={gameState.status !== 'active' && gameState.status !== 'waiting'}
+                isGameOver={displayStatus !== 'active' && displayStatus !== 'waiting'}
                 inCheckColor={outcome.inCheckColor}
-                lastMove={gameState.lastMove}
-                pendingPromotion={pendingPromotion}
+                lastMove={displayLastMove}
+                pendingPromotion={isSpectating ? null : pendingPromotion}
                 hintArrow={
-                  canTroll && showEngineHint && engineHint
+                  !isSpectating && canTroll && showEngineHint && engineHint
                     ? { from: engineHint.from, to: engineHint.to }
                     : null
                 }
-                evalCp={engineHint ? engineHint.evalCp : null}
-                showEvalBar={canTroll && showEvalBar}
-                armedTroll={armedTroll}
-                canTroll={canTroll}
-                cursesReceived={cursesReceived}
+                evalCp={!isSpectating && engineHint ? engineHint.evalCp : null}
+                showEvalBar={!isSpectating && canTroll && showEvalBar}
+                armedTroll={isSpectating ? null : armedTroll}
+                canTroll={!isSpectating && canTroll}
+                cursesReceived={isSpectating ? null : cursesReceived}
                 onAttemptMove={handleAttemptMove}
                 onSelectPromotion={handleSelectPromotion}
                 onCancelPromotion={() => setPendingPromotion(null)}
@@ -1906,183 +2151,448 @@ export default function App() {
               <PlayerClockStrip
                 playerName={bottomLabel}
                 color={bottomColor}
-                baseMs={gameState.baseMs}
+                baseMs={displayBaseMs}
                 syncedMs={bottomMs}
-                lastTickAt={gameState.lastTickAt}
+                lastTickAt={isSpectating && spectatingGame ? spectatingGame.lastTickAt : gameState.lastTickAt}
                 isRunning={bottomRunning}
-                isFrozen={gameState.frozenColor === bottomColor}
-                speedMultiplier={gameState.clockSpeedMultiplier?.[bottomColor] ?? 1}
+                isFrozen={!isSpectating && gameState.frozenColor === bottomColor}
+                speedMultiplier={!isSpectating ? (gameState.clockSpeedMultiplier?.[bottomColor] ?? 1) : 1}
                 capturedPieces={bottomCaptured}
                 materialAdvantage={bottomAdv}
                 checksCount={bottomChecks}
-                showChecks={gameState.variant === 'three_check'}
-                onTimeout={handleClockTimeout}
+                showChecks={displayVariant === 'three_check'}
+                onTimeout={isSpectating ? () => undefined : handleClockTimeout}
               />
             </>
           )}
         </div>
       </main>
 
-      {/* Right Action / Match Sidebar (Chess.com style) */}
+      {/* Right Sidebar Card (Chess.com 1-to-1 Play Chess menu / Setup / Watch / Match) */}
       <aside className="right-sidebar">
-        {!isMatchView ? (
-          <div className="play-card">
-            <div className="play-card-header">
-              <h1>Play Chess</h1>
-              <span className="muted-copy">Create a link or challenge a friend</span>
-            </div>
-
-            <div className="control-group">
-              <label className="field-label" htmlFor="lobby-variant-select">
-                Game mode
-              </label>
-              <select
-                id="lobby-variant-select"
-                className="select-input"
-                value={selectedVariant}
-                onChange={(e) => {
-                  const v = e.target.value as GameVariant;
-                  setSelectedVariant(v);
-                  setGameState(
-                    createInitialGameState({
-                      variant: v,
-                      timeControlId: activeTimeConfig.id,
-                      timeControlLabel: activeTimeConfig.label,
-                      baseMs: activeTimeConfig.baseMs,
-                      incMs: activeTimeConfig.incMs,
-                      status: 'active',
-                    })
-                  );
-                }}
-              >
-                {GAME_VARIANTS.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.label} — {v.shortDesc}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="control-group">
-              <span className="field-label">Time control</span>
-              <div className="segmented-tabs">
-                {(['Bullet', 'Blitz', 'Rapid', 'Custom'] as const).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`seg-tab ${timerCategory === cat ? 'is-active' : ''}`}
-                    onClick={() => {
-                      setTimerCategory(cat);
-                      if (cat === 'Bullet') setSelectedTimeControl('1+0');
-                      if (cat === 'Blitz') setSelectedTimeControl('5+0');
-                      if (cat === 'Rapid') setSelectedTimeControl('10+0');
-                    }}
-                  >
-                    {cat}
-                  </button>
-                ))}
+        {arenaMode === 'watch' ? (
+          spectatingGame ? (
+            <div className="match-sidebar">
+              <div className="match-meta-bar">
+                <div className="match-meta-left">
+                  <span
+                    className={`status-dot ${spectatingGame.status === 'active' ? 'is-live' : 'is-wait'}`}
+                  />
+                  <strong>
+                    {spectatingGame.mode === 'bot' ? 'Player vs Bot' : 'Live Players'}
+                  </strong>
+                  <span className="mono-muted">
+                    {activeVariantLabel} · {spectatingGame.timeControlLabel}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setSpectatingGame(null)}
+                >
+                  All Games
+                </button>
               </div>
 
-              {timerCategory === 'Custom' ? (
-                <div className="custom-timer-row">
-                  <label className="custom-timer-field">
-                    <span>Minutes</span>
-                    <input
-                      type="number"
-                      className="text-input"
-                      min={1}
-                      max={180}
-                      value={customMinutes}
-                      onChange={(e) => setCustomMinutes(Number(e.target.value) || 5)}
-                    />
-                  </label>
-                  <label className="custom-timer-field">
-                    <span>Increment (s)</span>
-                    <input
-                      type="number"
-                      className="text-input"
-                      min={0}
-                      max={60}
-                      value={customIncrement}
-                      onChange={(e) => setCustomIncrement(Number(e.target.value) || 0)}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className="preset-grid timer-subgrid">
-                  {visibleTimerPresets.map((tc) => (
+              <div className="moves-panel">
+                {movePairs.length === 0 ? (
+                  <div className="empty-ledger">Waiting for opening move…</div>
+                ) : (
+                  movePairs.map((pair) => (
+                    <div key={pair.num} className="move-row">
+                      <span className="move-num">{pair.num}.</span>
+                      <span className="move-san">{pair.white}</span>
+                      <span className="move-san">{pair.black || ''}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="board-actions-bar">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSpectateOrientation((o) => (o === 'w' ? 'b' : 'w'))}
+                >
+                  <FlipIcon size={14} />
+                  <span>Flip Board</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setSpectatingGame(null)}
+                >
+                  <span>Back to Watch</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="watch-sidebar">
+              <div className="play-card-title-row">
+                <BinocularsIcon size={22} />
+                <h1>Watch Live</h1>
+              </div>
+
+              <div className="segmented-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={watchFilter === 'all'}
+                  className={`seg-tab ${watchFilter === 'all' ? 'is-active' : ''}`}
+                  onClick={() => setWatchFilter('all')}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={watchFilter === 'pvp'}
+                  className={`seg-tab ${watchFilter === 'pvp' ? 'is-active' : ''}`}
+                  onClick={() => setWatchFilter('pvp')}
+                >
+                  Real Players
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={watchFilter === 'bot'}
+                  className={`seg-tab ${watchFilter === 'bot' ? 'is-active' : ''}`}
+                  onClick={() => setWatchFilter('bot')}
+                >
+                  Player vs Bots
+                </button>
+              </div>
+
+              <div className="watch-list">
+                {watchList.map((g) => {
+                  const vName = GAME_VARIANTS.find((v) => v.id === g.variant)?.label || g.variant;
+                  return (
                     <button
-                      key={tc.id}
+                      key={g.gameId}
                       type="button"
-                      className={`preset-btn ${selectedTimeControl === tc.id ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setSelectedTimeControl(tc.id);
+                      className="watch-game-card"
+                      onClick={() => void handleStartSpectating(g)}
+                    >
+                      <div className="watch-card-top">
+                        <span className="watch-mode-tag">
+                          <span className={`status-dot ${g.status === 'active' ? 'is-live' : 'is-wait'}`} />
+                          <span>{g.mode === 'bot' ? 'Player vs Bot' : 'Live Players'}</span>
+                        </span>
+                        <span className="mono-muted">
+                          {vName} · {g.timeControlLabel}
+                        </span>
+                      </div>
+                      <div className="watch-players">
+                        {g.whiteName} vs {g.blackName}
+                      </div>
+                      <div className="watch-card-foot">
+                        <span className="muted-copy">Move {Math.ceil(g.moveCount / 2)}</span>
+                        <span className="watch-cta">Watch</span>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {watchList.length === 0 && !watchLoading && (
+                  <div className="empty-watch-box">
+                    <p className="muted-copy">
+                      No live {watchFilter === 'pvp' ? 'Real Player' : watchFilter === 'bot' ? 'Player vs Bot' : ''} games active right now.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => void refreshWatchList(watchFilter)}
+                    >
+                      Refresh Live Feed
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        ) : !isMatchView ? (
+          rightSetupView === 'menu' ? (
+            <div className="play-menu-card">
+              <div className="play-card-title-row">
+                <BrandCrownIcon size={24} />
+                <h1>Play Chess</h1>
+              </div>
+
+              <div className="chesscom-menu-list">
+                <button
+                  type="button"
+                  className="menu-action-card create-room-btn"
+                  onClick={() => setRightSetupView('setup_online')}
+                >
+                  <span className="menu-icon-wrap is-gold">
+                    <BoltIcon size={20} />
+                  </span>
+                  <span className="menu-text">
+                    <strong>Play Online</strong>
+                    <span>Create an invite link for a friend</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="menu-action-card"
+                  onClick={() => setRightSetupView('setup_bot')}
+                >
+                  <span className="menu-icon-wrap is-blue">
+                    <BotIcon size={20} />
+                  </span>
+                  <span className="menu-text">
+                    <strong>Play Bots</strong>
+                    <span>Challenge our Chess Bot at any speed</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="menu-action-card"
+                  onClick={() => setFriendsModalOpen(true)}
+                >
+                  <span className="menu-icon-wrap is-warm">
+                    <HandshakeIcon size={20} />
+                  </span>
+                  <span className="menu-text">
+                    <strong>Play a Friend</strong>
+                    <span>Challenge friends from your list</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="menu-action-card"
+                  onClick={() => {
+                    setArenaMode('watch');
+                    setSpectatingGame(null);
+                    void refreshWatchList(watchFilter);
+                  }}
+                >
+                  <span className="menu-icon-wrap is-sky">
+                    <BinocularsIcon size={20} />
+                  </span>
+                  <span className="menu-text">
+                    <strong>Watch Live</strong>
+                    <span>Spectate real players or player vs bots</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="menu-action-card"
+                  onClick={() => {
+                    setSelectedVariant('chess960');
+                    setRightSetupView('setup_online');
+                  }}
+                >
+                  <span className="menu-icon-wrap is-green">
+                    <CubeVariantIcon size={20} />
+                  </span>
+                  <span className="menu-text">
+                    <strong>Chess Variants</strong>
+                    <span>Chess960, Three-Check, KOTH &amp; Atomic</span>
+                  </span>
+                </button>
+              </div>
+
+              <div className="menu-card-footer">
+                <button
+                  type="button"
+                  className="footer-link-btn"
+                  onClick={() => setRightSetupView('setup_join')}
+                >
+                  Join by Code
+                </button>
+                <button
+                  type="button"
+                  className="footer-link-btn"
+                  onClick={() => setFriendsModalOpen(true)}
+                >
+                  Friends List
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="play-card">
+              <div className="setup-back-row">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setRightSetupView('menu')}
+                >
+                  ← Back
+                </button>
+                <h2>
+                  {rightSetupView === 'setup_bot'
+                    ? 'Play Bots'
+                    : rightSetupView === 'setup_join'
+                      ? 'Join Match'
+                      : 'Play Online'}
+                </h2>
+              </div>
+
+              {rightSetupView === 'setup_join' ? (
+                <form className="form-stack" onSubmit={handleJoinRoom}>
+                  <label className="field-label" htmlFor="join-code-input">
+                    Invite code or URL
+                  </label>
+                  <input
+                    id="join-code-input"
+                    type="text"
+                    className="text-input"
+                    value={joinInput}
+                    onChange={(e) => setJoinInput(e.target.value)}
+                    placeholder="Paste invite code or link"
+                  />
+                  <button type="submit" className="btn btn-green create-room-btn">
+                    Open Invite
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <div className="control-group">
+                    <label className="field-label" htmlFor="lobby-variant-select">
+                      Game mode
+                    </label>
+                    <select
+                      id="lobby-variant-select"
+                      className="select-input"
+                      value={selectedVariant}
+                      onChange={(e) => {
+                        const v = e.target.value as GameVariant;
+                        setSelectedVariant(v);
                         setGameState(
                           createInitialGameState({
-                            variant: selectedVariant,
-                            timeControlId: tc.id,
-                            timeControlLabel: tc.label,
-                            baseMs: tc.baseMs,
-                            incMs: tc.incMs,
+                            variant: v,
+                            timeControlId: activeTimeConfig.id,
+                            timeControlLabel: activeTimeConfig.label,
+                            baseMs: activeTimeConfig.baseMs,
+                            incMs: activeTimeConfig.incMs,
                             status: 'active',
                           })
                         );
                       }}
                     >
-                      {tc.label}
+                      {GAME_VARIANTS.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.label} — {v.shortDesc}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="control-group">
+                    <span className="field-label">Time control</span>
+                    <div className="segmented-tabs">
+                      {(['Bullet', 'Blitz', 'Rapid', 'Custom'] as const).map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`seg-tab ${timerCategory === cat ? 'is-active' : ''}`}
+                          onClick={() => {
+                            setTimerCategory(cat);
+                            if (cat === 'Bullet') setSelectedTimeControl('1+0');
+                            if (cat === 'Blitz') setSelectedTimeControl('5+0');
+                            if (cat === 'Rapid') setSelectedTimeControl('10+0');
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+
+                    {timerCategory === 'Custom' ? (
+                      <div className="custom-timer-row">
+                        <label className="custom-timer-field">
+                          <span>Minutes</span>
+                          <input
+                            type="number"
+                            className="text-input"
+                            min={1}
+                            max={180}
+                            value={customMinutes}
+                            onChange={(e) => setCustomMinutes(Number(e.target.value) || 5)}
+                          />
+                        </label>
+                        <label className="custom-timer-field">
+                          <span>Increment (s)</span>
+                          <input
+                            type="number"
+                            className="text-input"
+                            min={0}
+                            max={60}
+                            value={customIncrement}
+                            onChange={(e) => setCustomIncrement(Number(e.target.value) || 0)}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="preset-grid timer-subgrid">
+                        {visibleTimerPresets.map((tc) => (
+                          <button
+                            key={tc.id}
+                            type="button"
+                            className={`preset-btn ${selectedTimeControl === tc.id ? 'is-selected' : ''}`}
+                            onClick={() => {
+                              setSelectedTimeControl(tc.id);
+                              setGameState(
+                                createInitialGameState({
+                                  variant: selectedVariant,
+                                  timeControlId: tc.id,
+                                  timeControlLabel: tc.label,
+                                  baseMs: tc.baseMs,
+                                  incMs: tc.incMs,
+                                  status: 'active',
+                                })
+                              );
+                            }}
+                          >
+                            {tc.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="control-group">
+                    <span className="field-label">Your side</span>
+                    <div className="segmented-tabs">
+                      {(['random', 'w', 'b'] as const).map((side) => (
+                        <button
+                          key={side}
+                          type="button"
+                          className={`seg-tab ${preferredColor === side ? 'is-active' : ''}`}
+                          onClick={() => setPreferredColor(side)}
+                        >
+                          {side === 'random' ? 'Random' : side === 'w' ? 'White' : 'Black'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {rightSetupView === 'setup_bot' ? (
+                    <button
+                      type="button"
+                      className="btn btn-green create-room-btn"
+                      onClick={() => handleStartBotMatch()}
+                    >
+                      Start Bot Match
                     </button>
-                  ))}
-                </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-green create-room-btn"
+                      onClick={handleCreateRoom}
+                    >
+                      Create Invite Link
+                    </button>
+                  )}
+                </>
               )}
             </div>
-
-            <div className="control-group">
-              <span className="field-label">Your side</span>
-              <div className="segmented-tabs">
-                {(['random', 'w', 'b'] as const).map((side) => (
-                  <button
-                    key={side}
-                    type="button"
-                    className={`seg-tab ${preferredColor === side ? 'is-active' : ''}`}
-                    onClick={() => setPreferredColor(side)}
-                  >
-                    {side === 'random' ? 'Random' : side === 'w' ? 'White' : 'Black'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-green create-room-btn"
-              onClick={handleCreateRoom}
-            >
-              Play a Friend (Create Link)
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => handleStartBotMatch('w')}
-            >
-              <BotIcon size={15} />
-              <span>Play vs Computer</span>
-            </button>
-
-            <form className="join-form" onSubmit={handleJoinRoom}>
-              <input
-                type="text"
-                className="text-input"
-                value={joinInput}
-                onChange={(e) => setJoinInput(e.target.value)}
-                placeholder="Paste invite code or link"
-                aria-label="Room code or invite link"
-              />
-              <button type="submit" className="btn btn-secondary">
-                Join
-              </button>
-            </form>
-          </div>
+          )
         ) : (
           <div className="match-sidebar">
             <div className="match-meta-bar">
@@ -2101,8 +2611,8 @@ export default function App() {
                 <strong>{activeVariantLabel}</strong>
                 <span className="mono-muted">{gameState.timeControlLabel}</span>
               </div>
-              {roomCode && (
-                <div className="match-meta-actions">
+              <div className="match-meta-actions">
+                {roomCode && (
                   <button
                     type="button"
                     className="btn btn-ghost btn-xs"
@@ -2110,11 +2620,11 @@ export default function App() {
                   >
                     {copySuccess ? 'Copied' : `Room ${roomCode}`}
                   </button>
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={handleLeaveRoom}>
-                    Leave
-                  </button>
-                </div>
-              )}
+                )}
+                <button type="button" className="btn btn-ghost btn-xs" onClick={handleLeaveRoom}>
+                  Leave
+                </button>
+              </div>
             </div>
 
             <div className="moves-panel">
@@ -2298,6 +2808,7 @@ export default function App() {
 
       <AccountModal
         open={accountModalOpen}
+        initialAuthMode={accountAuthMode}
         guestName={guestName}
         user={user}
         hasOwner={hasOwner}
@@ -2316,6 +2827,18 @@ export default function App() {
           if (typeof nextHasOwner === 'boolean') setHasOwner(nextHasOwner);
         }}
         onOpenOperatorDrawer={() => setDrawerOpen(true)}
+        onOpenProfile={(uname) => {
+          setProfileModalUser(uname);
+          setProfileModalOpen(true);
+        }}
+      />
+
+      <ProfileModal
+        open={profileModalOpen}
+        initialUsername={profileModalUser}
+        currentUser={user}
+        onClose={() => setProfileModalOpen(false)}
+        onCurrentUserUpdated={(nextUser) => setUser(nextUser)}
       />
 
       <FriendsModal
@@ -2324,7 +2847,10 @@ export default function App() {
         social={social}
         onClose={() => setFriendsModalOpen(false)}
         onRefreshSocial={refreshSocial}
-        onOpenAccount={() => setAccountModalOpen(true)}
+        onOpenAccount={() => {
+          setAccountAuthMode('login');
+          setAccountModalOpen(true);
+        }}
         onLaunchChallenge={handleLaunchFriendChallenge}
         onAcceptChallenge={handleAcceptDirectChallenge}
       />
