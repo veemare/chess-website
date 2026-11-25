@@ -298,7 +298,6 @@ export const ChessBoard = memo(function ChessBoard({
       active: false,
     };
     dragRef.current = initial;
-    setSelectedSquare(sq);
   }
 
   function handleSquareClick(sq: string) {

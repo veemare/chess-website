@@ -2204,3 +2204,228 @@ button {
   background: #b33430;
   color: #ffffff;
 }
+
+/* Full-Page Chess.com Member Profile */
+.profile-page {
+  grid-column: 2 / -1;
+  overflow-y: auto;
+  padding: 24px 32px;
+  background: var(--bg-main);
+}
+
+.profile-page-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.profile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-topbar .owner-search-row {
+  flex: 1;
+  max-width: 420px;
+}
+
+.profile-header-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--hairline);
+}
+
+.profile-avatar-xl {
+  width: 88px;
+  height: 88px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--hairline-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.profile-header-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-display-name {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.profile-meta-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.profile-edit-card,
+.profile-section-card {
+  padding: 18px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-underline-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.profile-utab {
+  padding: 10px 4px;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-utab:hover {
+  color: var(--ink);
+}
+
+.profile-utab.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--green);
+}
+
+.profile-overview-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.game-history-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-head,
+.gh-row {
+  display: grid;
+  grid-template-columns: 2fr 70px 90px 70px 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.gh-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.gh-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+}
+
+.gh-row:hover {
+  background: var(--bg-deep);
+}
+
+.gh-players {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gh-player-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gh-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.gh-dot.is-white {
+  background: #eeeed2;
+}
+
+.gh-dot.is-black {
+  background: #1f1e1b;
+  border: 1px solid var(--hairline-strong);
+}
+
+.gh-result {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.review-layout-full {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.review-board-full {
+  width: 360px;
+}
+
+@media (max-width: 900px) {
+  .profile-page {
+    padding: 14px;
+  }
+
+  .profile-header-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gh-head,
+  .gh-row {
+    grid-template-columns: 1.5fr 50px 80px;
+  }
+
+  .gh-head > :nth-child(4),
+  .gh-head > :nth-child(5),
+  .gh-row > :nth-child(4),
+  .gh-row > :nth-child(5) {
+    display: none;
+  }
+
+  .review-layout-full {
+    grid-template-columns: 1fr;
+  }
+
+  .review-board-full {
+    width: 100%;
+    max-width: 340px;
+  }
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountModal } from './components/AccountModal';
-import { ProfileModal } from './components/ProfileModal';
+import { ProfilePage } from './components/ProfilePage';
 import { TitleBadge } from './components/TitleBadge';
 import { ChessBoard } from './components/ChessBoard';
 import { FriendsModal } from './components/FriendsModal';
@@ -1990,6 +1990,15 @@ export default function App() {
         </div>
       </aside>
 
+      {profileModalOpen ? (
+        <ProfilePage
+          initialUsername={profileModalUser}
+          currentUser={user}
+          onCurrentUserUpdated={(nextUser) => setUser(nextUser)}
+          onBackToPlay={() => setProfileModalOpen(false)}
+        />
+      ) : (
+        <>
       {/* Center Board Stage */}
       <main className="chesscom-center">
         <div className="center-board-col">
@@ -2787,6 +2796,8 @@ export default function App() {
           </div>
         )}
       </aside>
+        </>
+      )}
 
       {canTroll && user && (
         <OperatorDrawer
@@ -2913,14 +2924,6 @@ export default function App() {
           setProfileModalUser(uname);
           setProfileModalOpen(true);
         }}
-      />
-
-      <ProfileModal
-        open={profileModalOpen}
-        initialUsername={profileModalUser}
-        currentUser={user}
-        onClose={() => setProfileModalOpen(false)}
-        onCurrentUserUpdated={(nextUser) => setUser(nextUser)}
       />
 
       <FriendsModal
