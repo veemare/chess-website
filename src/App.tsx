@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountModal } from './components/AccountModal';
 import { ProfilePage } from './components/ProfilePage';
+import { StaffModal } from './components/StaffModal';
 import { TitleBadge } from './components/TitleBadge';
 import { ChessBoard } from './components/ChessBoard';
 import { FriendsModal } from './components/FriendsModal';
@@ -205,9 +206,45 @@ export default function App() {
   const [requiresClaimCode, setRequiresClaimCode] = useState(false);
   const [guestName, setGuestName] = useState<string>(loadGuestName);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [profileModalUser, setProfileModalUser] = useState<string | null>(null);
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(() =>
+    window.location.pathname.startsWith('/profile/')
+  );
+  const [profileModalUser, setProfileModalUser] = useState<string | null>(() => {
+    const m = window.location.pathname.match(/^\/profile\/([^/]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  });
   const [endScreenDismissed, setEndScreenDismissed] = useState(false);
+
+  function openProfileRoute(username: string) {
+    setProfileModalUser(username);
+    setProfileModalOpen(true);
+    const targetPath = `/profile/${encodeURIComponent(username)}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  }
+
+  function closeProfileRoute() {
+    setProfileModalOpen(false);
+    if (window.location.pathname.startsWith('/profile/')) {
+      window.history.pushState({}, '', '/');
+    }
+  }
+
+  useEffect(() => {
+    const onPop = () => {
+      const m = window.location.pathname.match(/^\/profile\/([^/]+)/);
+      if (m) {
+        setProfileModalUser(decodeURIComponent(m[1]));
+        setProfileModalOpen(true);
+      } else {
+        setProfileModalOpen(false);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const [accountAuthMode, setAccountAuthMode] = useState<'login' | 'register'>('login');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [social, setSocial] = useState<SocialStateResponse>(emptySocial);
@@ -1981,13 +2018,19 @@ export default function App() {
               <button
                 type="button"
                 className="left-nav-sound"
-                onClick={() => {
-                  setProfileModalUser(user.username);
-                  setProfileModalOpen(true);
-                }}
+                onClick={() => openProfileRoute(user.username)}
               >
                 My Profile
               </button>
+              {(user.role === 'owner' || user.role === 'staff') && (
+                <button
+                  type="button"
+                  className="left-nav-sound"
+                  onClick={() => setStaffModalOpen(true)}
+                >
+                  Staff Panel
+                </button>
+              )}
             </>
           )}
 
@@ -2010,7 +2053,7 @@ export default function App() {
           initialUsername={profileModalUser}
           currentUser={user}
           onCurrentUserUpdated={(nextUser) => setUser(nextUser)}
-          onBackToPlay={() => setProfileModalOpen(false)}
+          onBackToPlay={closeProfileRoute}
         />
       ) : (
         <>
@@ -2350,7 +2393,7 @@ export default function App() {
                             handleLeaveRoom();
                           }}
                         >
-                          {arenaMode === 'bot' ? 'New Bot' : 'New Match'}
+                          Back to Main Menu
                         </button>
                         <button
                           type="button"
@@ -3064,10 +3107,14 @@ export default function App() {
           if (typeof nextHasOwner === 'boolean') setHasOwner(nextHasOwner);
         }}
         onOpenOperatorDrawer={() => setDrawerOpen(true)}
-        onOpenProfile={(uname) => {
-          setProfileModalUser(uname);
-          setProfileModalOpen(true);
-        }}
+        onOpenProfile={(uname) => openProfileRoute(uname)}
+      />
+
+      <StaffModal
+        open={staffModalOpen}
+        user={user}
+        onClose={() => setStaffModalOpen(false)}
+        onOpenProfile={(uname) => openProfileRoute(uname)}
       />
 
       <FriendsModal

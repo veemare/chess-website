@@ -757,8 +757,8 @@ export async function handleApiRequest(
   }
 
   if (method === 'GET' && path === '/owner/users') {
-    if (!currentUser || currentUser.role !== 'owner') {
-      return jsonResponse(403, { error: 'Owner account required.' });
+    if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'staff')) {
+      return jsonResponse(403, { error: 'Staff or Owner account required.' });
     }
     const now = Date.now();
     const q = (req.query.get('q') || '').trim().toLowerCase();
