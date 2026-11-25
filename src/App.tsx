@@ -242,6 +242,7 @@ export default function App() {
     parseRoomFromUrl() ? 'Waiting for opponent…' : 'Opponent'
   );
   const [opponentTitle, setOpponentTitle] = useState<string | null>(null);
+  const [opponentElos, setOpponentElos] = useState<import('./types/chess').EloRatings | null>(null);
   const savedGameIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -254,15 +255,22 @@ export default function App() {
       clean.startsWith('Bot')
     ) {
       setOpponentTitle(null);
+      setOpponentElos(null);
       return;
     }
     let cancelled = false;
     void fetchUserProfile(clean)
       .then((res) => {
-        if (!cancelled) setOpponentTitle(res.profile.title);
+        if (!cancelled) {
+          setOpponentTitle(res.profile.title);
+          setOpponentElos(res.profile.elo);
+        }
       })
       .catch(() => {
-        if (!cancelled) setOpponentTitle(null);
+        if (!cancelled) {
+          setOpponentTitle(null);
+          setOpponentElos(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -2191,6 +2199,24 @@ export default function App() {
               <PlayerClockStrip
                 playerName={topLabel}
                 playerTitle={!isSpectating ? (topColor === localColor ? (user?.title ?? null) : opponentTitle) : null}
+                playerElo={
+                  !isSpectating
+                    ? (() => {
+                        const lbl = gameState.timeControlLabel.toLowerCase();
+                        const cat =
+                          lbl.includes('unlimited') || lbl.includes('∞')
+                            ? 'classical'
+                            : (Number(lbl.match(/^(\d+)/)?.[1] || 5) < 3
+                                ? 'bullet'
+                                : Number(lbl.match(/^(\d+)/)?.[1] || 5) < 10
+                                  ? 'blitz'
+                                  : 'rapid');
+                        return topColor === localColor
+                          ? (user?.elo?.[cat] ?? null)
+                          : (opponentElos?.[cat] ?? null);
+                      })()
+                    : null
+                }
                 color={topColor}
                 baseMs={displayBaseMs}
                 syncedMs={topMs}
@@ -2241,6 +2267,24 @@ export default function App() {
               <PlayerClockStrip
                 playerName={bottomLabel}
                 playerTitle={!isSpectating ? (bottomColor === localColor ? (user?.title ?? null) : opponentTitle) : null}
+                playerElo={
+                  !isSpectating
+                    ? (() => {
+                        const lbl = gameState.timeControlLabel.toLowerCase();
+                        const cat =
+                          lbl.includes('unlimited') || lbl.includes('∞')
+                            ? 'classical'
+                            : (Number(lbl.match(/^(\d+)/)?.[1] || 5) < 3
+                                ? 'bullet'
+                                : Number(lbl.match(/^(\d+)/)?.[1] || 5) < 10
+                                  ? 'blitz'
+                                  : 'rapid');
+                        return bottomColor === localColor
+                          ? (user?.elo?.[cat] ?? null)
+                          : (opponentElos?.[cat] ?? null);
+                      })()
+                    : null
+                }
                 color={bottomColor}
                 baseMs={displayBaseMs}
                 syncedMs={bottomMs}

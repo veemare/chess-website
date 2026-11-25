@@ -9,7 +9,7 @@ import {
   setOwnerUserStaff,
   setOwnerUserTitle,
 } from '../services/api';
-import type { PublicUser } from '../types/chess';
+import type { PublicUser, SkillLevel } from '../types/chess';
 import { TitleBadge } from './TitleBadge';
 import { CloseIcon, ShieldIcon, UserIcon } from './Icons';
 
@@ -74,6 +74,7 @@ export function AccountModal({
   const [ownerSearch, setOwnerSearch] = useState('');
   const [titleTarget, setTitleTarget] = useState('');
   const [titleValue, setTitleValue] = useState('GM');
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>('basics');
 
   useEffect(() => {
     setLocalGuest(guestName);
@@ -164,7 +165,7 @@ export function AccountModal({
         setPassword('');
         setNotice(`Signed in as @${res.user.username}.`);
       } else if (authMode === 'register') {
-        const res = await registerAccount(username, password);
+        const res = await registerAccount(username, password, skillLevel);
         onUserUpdated(res.user);
         setPassword('');
         setNotice(`Account @${res.user.username} created.`);
@@ -418,6 +419,25 @@ export function AccountModal({
                         onChange={(e) => setClaimCode(e.target.value)}
                         placeholder="Matches OWNER_CLAIM_CODE env var"
                       />
+                    </div>
+                  )}
+
+                  {authMode === 'register' && (
+                    <div className="control-group">
+                      <label className="field-label" htmlFor="register-skill-level">
+                        What is your chess skill level?
+                      </label>
+                      <select
+                        id="register-skill-level"
+                        className="select-input"
+                        value={skillLevel}
+                        onChange={(e) => setSkillLevel(e.target.value as SkillLevel)}
+                      >
+                        <option value="new">New Player (400 Elo)</option>
+                        <option value="basics">Know Basics (800 Elo)</option>
+                        <option value="intermediate">Intermediate (1200 Elo)</option>
+                        <option value="tournament">Chess Tournament Player (1600 Elo)</option>
+                      </select>
                     </div>
                   )}
 

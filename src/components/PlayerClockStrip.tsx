@@ -6,6 +6,7 @@ import { TitleBadge } from './TitleBadge';
 interface PlayerClockStripProps {
   playerName: string;
   playerTitle?: string | null;
+  playerElo?: number | null;
   color: PieceColor;
   baseMs: number;
   syncedMs: number;
@@ -38,6 +39,7 @@ function formatChessComClock(ms: number, untimed: boolean): string {
 export const PlayerClockStrip = memo(function PlayerClockStrip({
   playerName,
   playerTitle,
+  playerElo,
   color,
   baseMs,
   syncedMs,
@@ -96,6 +98,9 @@ export const PlayerClockStrip = memo(function PlayerClockStrip({
           <div className="player-name-row">
             <TitleBadge title={playerTitle} />
             <span className="player-name">{playerName}</span>
+            {typeof playerElo === 'number' && (
+              <span className="mono-muted">({playerElo})</span>
+            )}
             {showChecks && (
               <span className="checks-badge">Checks {checksCount}/3</span>
             )}

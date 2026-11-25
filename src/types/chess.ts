@@ -53,6 +53,16 @@ export interface TrollAccessSummary {
   grantedBy: string | null;
 }
 
+export type EloCategory = 'bullet' | 'blitz' | 'rapid' | 'classical';
+export type SkillLevel = 'new' | 'basics' | 'intermediate' | 'tournament';
+
+export interface EloRatings {
+  bullet: number;
+  blitz: number;
+  rapid: number;
+  classical: number;
+}
+
 export interface PublicUser {
   id: string;
   username: string;
@@ -60,6 +70,8 @@ export interface PublicUser {
   role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
+  skillLevel: SkillLevel;
+  elo: EloRatings;
   createdAt: number;
   trollAccess: TrollAccessSummary;
 }
@@ -101,6 +113,8 @@ export interface UserProfile {
   role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
+  skillLevel?: SkillLevel;
+  elo: EloRatings;
   createdAt: number;
   online: boolean;
   stats: UserProfileStats;

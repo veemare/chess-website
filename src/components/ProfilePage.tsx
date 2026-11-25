@@ -392,20 +392,20 @@ export function ProfilePage({
               <div className="profile-overview-stack">
                 <div className="profile-stats-grid">
                   <div className="stat-box">
-                    <span className="stat-val">{profile.stats.total}</span>
-                    <span className="muted-copy">Total Games</span>
+                    <span className="stat-val">{profile.elo?.bullet ?? 800}</span>
+                    <span className="muted-copy">Bullet</span>
                   </div>
                   <div className="stat-box">
-                    <span className="stat-val">{profile.stats.wins}</span>
-                    <span className="muted-copy">Wins</span>
+                    <span className="stat-val">{profile.elo?.blitz ?? 800}</span>
+                    <span className="muted-copy">Blitz</span>
                   </div>
                   <div className="stat-box">
-                    <span className="stat-val">{profile.stats.losses}</span>
-                    <span className="muted-copy">Losses</span>
+                    <span className="stat-val">{profile.elo?.rapid ?? 800}</span>
+                    <span className="muted-copy">Rapid</span>
                   </div>
                   <div className="stat-box">
-                    <span className="stat-val">{profile.stats.draws}</span>
-                    <span className="muted-copy">Draws</span>
+                    <span className="stat-val">{profile.stats.wins}W / {profile.stats.losses}L</span>
+                    <span className="muted-copy">{profile.stats.total} Games</span>
                   </div>
                 </div>
 

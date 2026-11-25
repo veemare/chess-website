@@ -7,6 +7,16 @@ export interface TrollGrant {
   grantedAt: number | null;
 }
 
+export type EloCategory = 'bullet' | 'blitz' | 'rapid' | 'classical';
+export type SkillLevel = 'new' | 'basics' | 'intermediate' | 'tournament';
+
+export interface EloRatings {
+  bullet: number;
+  blitz: number;
+  rapid: number;
+  classical: number;
+}
+
 export interface StoredUser {
   id: string;
   username: string;
@@ -16,6 +26,8 @@ export interface StoredUser {
   role: 'owner' | 'staff' | 'user';
   title?: string | null;
   bio?: string;
+  skillLevel?: SkillLevel;
+  elo?: EloRatings;
   createdAt: number;
   trollGrant: TrollGrant;
 }
@@ -34,6 +46,8 @@ export interface PublicUser {
   role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
+  skillLevel: SkillLevel;
+  elo: EloRatings;
   createdAt: number;
   trollAccess: TrollAccessSummary;
 }
@@ -294,6 +308,44 @@ export function resolveTrollAccess(user: StoredUser, now = Date.now()): TrollAcc
   };
 }
 
+function startingEloForSkill(skill?: string): { skillLevel: SkillLevel; elo: EloRatings } {
+  const map: Record<SkillLevel, number> = {
+    new: 400,
+    basics: 800,
+    intermediate: 1200,
+    tournament: 1600,
+  };
+  const valid: SkillLevel =
+    skill === 'new' || skill === 'basics' || skill === 'intermediate' || skill === 'tournament'
+      ? skill
+      : 'basics';
+  const base = map[valid];
+  return {
+    skillLevel: valid,
+    elo: { bullet: base, blitz: base, rapid: base, classical: base },
+  };
+}
+
+function getUserElo(user: StoredUser): EloRatings {
+  if (user.elo) return user.elo;
+  return startingEloForSkill(user.skillLevel).elo;
+}
+
+function resolveEloCategory(timeControlLabel: string): EloCategory {
+  const lower = (timeControlLabel || '').toLowerCase();
+  if (lower.includes('unlimited') || lower.includes('∞')) return 'classical';
+  const minsMatch = lower.match(/^(\d+(?:\.\d+)?)/);
+  const mins = minsMatch ? Number(minsMatch[1]) : 5;
+  if (mins < 3) return 'bullet';
+  if (mins < 10) return 'blitz';
+  return 'rapid';
+}
+
+function calculateEloDelta(ratingA: number, ratingB: number, scoreA: number, k = 32): number {
+  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+  return Math.round(k * (scoreA - expectedA));
+}
+
 function toPublicUser(user: StoredUser, now = Date.now()): PublicUser {
   return {
     id: user.id,
@@ -302,6 +354,8 @@ function toPublicUser(user: StoredUser, now = Date.now()): PublicUser {
     role: user.role,
     title: user.title?.trim() || null,
     bio: user.bio || '',
+    skillLevel: user.skillLevel || 'basics',
+    elo: getUserElo(user),
     createdAt: user.createdAt,
     trollAccess: resolveTrollAccess(user, now),
   };
@@ -599,7 +653,7 @@ export async function handleApiRequest(
   }
 
   if (method === 'POST' && path === '/auth/register') {
-    const body = parseBody<{ username?: string; password?: string }>(req);
+    const body = parseBody<{ username?: string; password?: string; skillLevel?: SkillLevel }>(req);
     if (!body) return jsonResponse(400, { error: 'Invalid request body.' });
     const rawUsername = (body.username || '').trim();
     const password = body.password || '';
@@ -616,6 +670,9 @@ export async function handleApiRequest(
       return jsonResponse(409, { error: 'That username is already registered.' });
     }
     const user = createStoredUser(rawUsername, password, 'user');
+    const initElo = startingEloForSkill(body.skillLevel);
+    user.skillLevel = initElo.skillLevel;
+    user.elo = initElo.elo;
     db.users[key] = user;
     await store.setJson(DB_KEY, db);
     const token = signSession(user.id, getEffectiveSecret(db));
@@ -789,6 +846,8 @@ export async function handleApiRequest(
         role: target.role,
         title: target.title?.trim() || null,
         bio: target.bio || '',
+        skillLevel: target.skillLevel || 'basics',
+        elo: getUserElo(target),
         createdAt: target.createdAt,
         online,
         stats: { total: userGames.length, wins, losses, draws },
@@ -849,6 +908,35 @@ export async function handleApiRequest(
       };
       const updated = [record, ...existing].slice(0, 300);
       await store.setJson(GAMES_KEY, updated);
+
+      // Update per-category Elo independently (Bullet vs Blitz vs Rapid vs Classical)
+      if (record.winner === 'w' || record.winner === 'b' || record.winner === 'draw') {
+        const cat = resolveEloCategory(record.timeControlLabel);
+        const wUser = db.users[normalizeUsername(record.whiteUsername)];
+        const bUser = db.users[normalizeUsername(record.blackUsername)];
+        const scoreW = record.winner === 'w' ? 1 : record.winner === 'b' ? 0 : 0.5;
+        const scoreB = 1 - scoreW;
+
+        if (wUser && bUser && wUser.id !== bUser.id) {
+          const wElo = getUserElo(wUser);
+          const bElo = getUserElo(bUser);
+          const dW = calculateEloDelta(wElo[cat], bElo[cat], scoreW);
+          const dB = calculateEloDelta(bElo[cat], wElo[cat], scoreB);
+          wUser.elo = { ...wElo, [cat]: Math.max(100, wElo[cat] + dW) };
+          bUser.elo = { ...bElo, [cat]: Math.max(100, bElo[cat] + dB) };
+          await store.setJson(DB_KEY, db);
+        } else if (wUser && record.mode === 'bot') {
+          const wElo = getUserElo(wUser);
+          const dW = calculateEloDelta(wElo[cat], 1200, scoreW, 24);
+          wUser.elo = { ...wElo, [cat]: Math.max(100, wElo[cat] + dW) };
+          await store.setJson(DB_KEY, db);
+        } else if (bUser && record.mode === 'bot') {
+          const bElo = getUserElo(bUser);
+          const dB = calculateEloDelta(bElo[cat], 1200, scoreB, 24);
+          bUser.elo = { ...bElo, [cat]: Math.max(100, bElo[cat] + dB) };
+          await store.setJson(DB_KEY, db);
+        }
+      }
     }
     return jsonResponse(200, { ok: true });
   }

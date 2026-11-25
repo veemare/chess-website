@@ -68,11 +68,12 @@ export async function fetchAuthMe(): Promise<AuthMeResponse> {
 
 export async function registerAccount(
   username: string,
-  password: string
+  password: string,
+  skillLevel: import('../types/chess').SkillLevel = 'basics'
 ): Promise<{ user: PublicUser }> {
   const res = await apiFetch<{ user: PublicUser; token?: string }>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, skillLevel }),
   });
   if (res.token) setStoredToken(res.token);
   return { user: res.user };
