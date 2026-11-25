@@ -125,9 +125,20 @@ export interface GroupRecord {
   id: string;
   name: string;
   description: string;
+  visibility: 'public' | 'private';
   ownerUsername: string;
   members: string[];
+  invites: string[];
   createdAt: number;
+}
+
+export interface LeaderboardEntry {
+  username: string;
+  displayName: string;
+  title: string | null;
+  role: 'owner' | 'staff' | 'user';
+  rating: number;
+  elo: EloRatings;
 }
 
 export interface FriendSummary {

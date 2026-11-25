@@ -168,12 +168,29 @@ export async function fetchGroups(): Promise<{ groups: import('../types/chess').
 
 export async function createGroup(
   name: string,
-  description: string
+  description: string,
+  visibility: 'public' | 'private' = 'public'
 ): Promise<{ group: import('../types/chess').GroupRecord; groups: import('../types/chess').GroupRecord[] }> {
   return apiFetch('/groups/create', {
     method: 'POST',
-    body: JSON.stringify({ name, description }),
+    body: JSON.stringify({ name, description, visibility }),
   });
+}
+
+export async function inviteToGroup(
+  groupId: string,
+  username: string
+): Promise<{ groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch('/groups/invite', {
+    method: 'POST',
+    body: JSON.stringify({ groupId, username }),
+  });
+}
+
+export async function fetchLeaderboard(
+  category: import('../types/chess').EloCategory = 'rapid'
+): Promise<{ category: import('../types/chess').EloCategory; entries: import('../types/chess').LeaderboardEntry[] }> {
+  return apiFetch(`/leaderboard?category=${encodeURIComponent(category)}`);
 }
 
 export async function joinGroup(groupId: string): Promise<{ groups: import('../types/chess').GroupRecord[] }> {

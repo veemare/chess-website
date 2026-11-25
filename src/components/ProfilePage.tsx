@@ -4,12 +4,21 @@ import {
   createGroup,
   deleteGroup,
   fetchGroups,
+  fetchLeaderboard,
   fetchUserProfile,
+  inviteToGroup,
   joinGroup,
   leaveGroup,
   updateMyProfile,
 } from '../services/api';
-import type { GroupRecord, PublicUser, SavedGameRecord, UserProfile } from '../types/chess';
+import type {
+  EloCategory,
+  GroupRecord,
+  LeaderboardEntry,
+  PublicUser,
+  SavedGameRecord,
+  UserProfile,
+} from '../types/chess';
 import { ChessBoard } from './ChessBoard';
 import { TitleBadge } from './TitleBadge';
 import { ShieldIcon } from './Icons';
@@ -21,7 +30,7 @@ interface ProfilePageProps {
   onBackToPlay: () => void;
 }
 
-type ProfileTab = 'overview' | 'games' | 'stats' | 'groups';
+type ProfileTab = 'overview' | 'games' | 'stats' | 'groups' | 'leaderboard';
 
 interface MoveFeedback {
   ply: number;
@@ -60,7 +69,13 @@ export function ProfilePage({
   const [groups, setGroups] = useState<GroupRecord[]>([]);
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
+  const [groupVisibility, setGroupVisibility] = useState<'public' | 'private'>('public');
+  const [inviteInputs, setInviteInputs] = useState<Record<string, string>>({});
   const [groupsBusy, setGroupsBusy] = useState(false);
+
+  // Leaderboard state
+  const [lbCategory, setLbCategory] = useState<EloCategory>('rapid');
+  const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([]);
 
   async function loadProfile(username: string) {
     const clean = username.trim();
@@ -102,7 +117,8 @@ export function ProfilePage({
       setError(null);
     }
     void loadGroupsList();
-  }, [initialUsername, currentUser?.username]);
+    void fetchLeaderboard(lbCategory).then((r) => setLbEntries(r.entries)).catch(() => undefined);
+  }, [initialUsername, currentUser?.username, lbCategory]);
 
   const isOwnProfile = Boolean(currentUser && profile && currentUser.id === profile.id);
 
@@ -190,7 +206,7 @@ export function ProfilePage({
     setGroupsBusy(true);
     setError(null);
     try {
-      const res = await createGroup(groupName, groupDesc);
+      const res = await createGroup(groupName, groupDesc, groupVisibility);
       setGroups(res.groups);
       setGroupName('');
       setGroupDesc('');
@@ -365,7 +381,7 @@ export function ProfilePage({
             )}
 
             <nav className="profile-underline-tabs" role="tablist">
-              {(['overview', 'games', 'stats', 'groups'] as ProfileTab[]).map((t) => (
+              {(['overview', 'games', 'stats', 'groups', 'leaderboard'] as ProfileTab[]).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -383,7 +399,9 @@ export function ProfilePage({
                       ? `Games (${profile.stats.total})`
                       : t === 'stats'
                         ? 'Stats'
-                        : `Groups (${groups.length})`}
+                        : t === 'groups'
+                          ? `Clans (${groups.length})`
+                          : 'Leaderboard'}
                 </button>
               ))}
             </nav>
@@ -571,30 +589,41 @@ export function ProfilePage({
 
             {tab === 'groups' && (
               <section className="profile-section-card">
-                <h2>Groups & Clubs</h2>
+                <h2>Clans &amp; Groups (Join Multiple)</h2>
                 {currentUser && (
                   <form className="owner-grant-form" onSubmit={(e) => void handleCreateGroup(e)}>
                     <div className="inline-input-row">
                       <input
                         type="text"
                         className="text-input"
-                        placeholder="New group name..."
+                        placeholder="New clan name..."
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
                         maxLength={40}
                       />
+                      <select
+                        className="select-input"
+                        value={groupVisibility}
+                        onChange={(e) =>
+                          setGroupVisibility(e.target.value as 'public' | 'private')
+                        }
+                        aria-label="Clan visibility"
+                      >
+                        <option value="public">Public</option>
+                        <option value="private">Private (Invite Only)</option>
+                      </select>
                       <button
                         type="submit"
                         className="btn btn-primary btn-sm"
                         disabled={groupsBusy || groupName.trim().length < 2}
                       >
-                        Create Group
+                        Create Clan
                       </button>
                     </div>
                     <input
                       type="text"
                       className="text-input"
-                      placeholder="Short group description (optional)"
+                      placeholder="Short clan description (optional)"
                       value={groupDesc}
                       onChange={(e) => setGroupDesc(e.target.value)}
                       maxLength={180}
@@ -607,6 +636,9 @@ export function ProfilePage({
                     const isMember = currentUser
                       ? g.members.includes(currentUser.username)
                       : false;
+                    const isInvited = currentUser
+                      ? (g.invites || []).includes(currentUser.username)
+                      : false;
                     const canDelete =
                       currentUser &&
                       (currentUser.role === 'owner' ||
@@ -616,9 +648,49 @@ export function ProfilePage({
                       <div key={g.id} className="owner-user-row">
                         <div className="owner-user-meta">
                           <strong>{g.name}</strong>
+                          <span className="mono-badge">
+                            {g.visibility === 'private' ? 'Private' : 'Public'}
+                          </span>
                           <span className="mono-muted">{g.members.length} members</span>
+                          {isInvited && <span className="mono-badge is-accent">Invited</span>}
                         </div>
                         <div className="owner-row-actions">
+                          {isMember && (
+                            <form
+                              className="inline-input-row"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const target = (inviteInputs[g.id] || '').trim();
+                                if (!target) return;
+                                void inviteToGroup(g.id, target)
+                                  .then((r) => {
+                                    setGroups(r.groups);
+                                    setInviteInputs((prev) => ({ ...prev, [g.id]: '' }));
+                                  })
+                                  .catch((err) =>
+                                    setError(
+                                      err instanceof Error ? err.message : 'Invite failed.'
+                                    )
+                                  );
+                              }}
+                            >
+                              <input
+                                type="text"
+                                className="text-input"
+                                placeholder="Invite @user"
+                                value={inviteInputs[g.id] || ''}
+                                onChange={(e) =>
+                                  setInviteInputs((prev) => ({
+                                    ...prev,
+                                    [g.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                              <button type="submit" className="btn btn-secondary btn-xs">
+                                Invite
+                              </button>
+                            </form>
+                          )}
                           {currentUser &&
                             (isMember ? (
                               <button
@@ -635,10 +707,16 @@ export function ProfilePage({
                                 type="button"
                                 className="btn btn-secondary btn-xs"
                                 onClick={() =>
-                                  void joinGroup(g.id).then((r) => setGroups(r.groups))
+                                  void joinGroup(g.id)
+                                    .then((r) => setGroups(r.groups))
+                                    .catch((err) =>
+                                      setError(
+                                        err instanceof Error ? err.message : 'Could not join.'
+                                      )
+                                    )
                                 }
                               >
-                                Join
+                                {isInvited ? 'Accept Invite' : 'Join'}
                               </button>
                             ))}
                           {canDelete && (
@@ -657,7 +735,43 @@ export function ProfilePage({
                     );
                   })}
                   {groups.length === 0 && (
-                    <div className="muted-copy">No groups created yet.</div>
+                    <div className="muted-copy">No clans created yet.</div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {tab === 'leaderboard' && (
+              <section className="profile-section-card">
+                <h2>Elo Leaderboard</h2>
+                <div className="segmented-tabs" role="tablist">
+                  {(['bullet', 'blitz', 'rapid', 'classical'] as EloCategory[]).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={lbCategory === cat}
+                      className={`seg-tab ${lbCategory === cat ? 'is-active' : ''}`}
+                      onClick={() => setLbCategory(cat)}
+                    >
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="leaderboard-table">
+                  {lbEntries.map((entry, idx) => (
+                    <div key={entry.username} className="lb-row">
+                      <span className="lb-rank">#{idx + 1}</span>
+                      <div className="gh-player-line">
+                        <TitleBadge title={entry.title} />
+                        <strong>{entry.displayName}</strong>
+                        <span className="muted-copy">@{entry.username}</span>
+                      </div>
+                      <span className="lb-rating">{entry.rating}</span>
+                    </div>
+                  ))}
+                  {lbEntries.length === 0 && (
+                    <div className="muted-copy">No ranked players yet.</div>
                   )}
                 </div>
               </section>

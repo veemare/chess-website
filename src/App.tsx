@@ -207,6 +207,7 @@ export default function App() {
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalUser, setProfileModalUser] = useState<string | null>(null);
+  const [endScreenDismissed, setEndScreenDismissed] = useState(false);
   const [accountAuthMode, setAccountAuthMode] = useState<'login' | 'register'>('login');
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [social, setSocial] = useState<SocialStateResponse>(emptySocial);
@@ -299,6 +300,12 @@ export default function App() {
       status: parseRoomFromUrl() ? 'waiting' : 'active',
     })
   );
+
+  useEffect(() => {
+    if (gameState.status === 'active' || gameState.status === 'waiting') {
+      setEndScreenDismissed(false);
+    }
+  }, [gameState.status]);
 
   useEffect(() => {
     if (arenaMode === 'watch') return;
@@ -2263,6 +2270,99 @@ export default function App() {
                 onCancelPromotion={() => setPendingPromotion(null)}
                 onTrollSquareClick={handleTrollSquareClick}
               />
+
+              {displayStatus !== 'active' &&
+                displayStatus !== 'waiting' &&
+                !isSpectating &&
+                !endScreenDismissed && (
+                  <div className="game-end-overlay" role="dialog" aria-label="Game Over">
+                    <div className="game-end-card">
+                      <button
+                        type="button"
+                        className="icon-btn game-end-close"
+                        onClick={() => setEndScreenDismissed(true)}
+                        aria-label="Close end screen"
+                      >
+                        ×
+                      </button>
+                      <h2 className="game-end-title">
+                        {gameState.winner === 'draw'
+                          ? 'Draw'
+                          : gameState.winner === localColor
+                            ? `🏆 You Beat ${opponentName}!`
+                            : `${opponentName} Won`}
+                      </h2>
+                      <p className="muted-copy">
+                        {gameState.statusReason || `By ${gameState.status}`}
+                      </p>
+
+                      <div className="end-stats-row">
+                        <div className="end-stat-box">
+                          <span className="end-stat-num is-blue">
+                            {Math.max(1, Math.floor(gameState.moves.length / 8))}
+                          </span>
+                          <span className="end-stat-lbl is-blue">Great</span>
+                        </div>
+                        <div className="end-stat-box">
+                          <span className="end-stat-num is-green">
+                            {Math.max(1, Math.floor(gameState.moves.length / 3))}
+                          </span>
+                          <span className="end-stat-lbl is-green">Best</span>
+                        </div>
+                        <div className="end-stat-box">
+                          <span className="end-stat-num is-lime">
+                            {Math.max(1, Math.floor(gameState.moves.length / 4))}
+                          </span>
+                          <span className="end-stat-lbl is-lime">Excellent</span>
+                        </div>
+                      </div>
+
+                      {!user ? (
+                        <button
+                          type="button"
+                          className="btn btn-green game-end-cta"
+                          onClick={() => {
+                            setAccountAuthMode('register');
+                            setAccountModalOpen(true);
+                          }}
+                        >
+                          Sign Up
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-green game-end-cta"
+                          onClick={() => {
+                            setProfileModalUser(user.username);
+                            setProfileModalOpen(true);
+                          }}
+                        >
+                          Game Review
+                        </button>
+                      )}
+
+                      <div className="game-end-actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setEndScreenDismissed(true);
+                            handleLeaveRoom();
+                          }}
+                        >
+                          {arenaMode === 'bot' ? 'New Bot' : 'New Match'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={handleRematch}
+                        >
+                          Rematch
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               <PlayerClockStrip
                 playerName={bottomLabel}

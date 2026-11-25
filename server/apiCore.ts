@@ -153,8 +153,10 @@ export interface GroupRecord {
   id: string;
   name: string;
   description: string;
+  visibility: 'public' | 'private';
   ownerUsername: string;
   members: string[];
+  invites: string[];
   createdAt: number;
 }
 const SESSION_COOKIE = 'vesper_session';
@@ -941,8 +943,38 @@ export async function handleApiRequest(
     return jsonResponse(200, { ok: true });
   }
 
+  if (method === 'GET' && path === '/leaderboard') {
+    const rawCat = (req.query.get('category') || 'rapid').toLowerCase();
+    const cat: EloCategory =
+      rawCat === 'bullet' || rawCat === 'blitz' || rawCat === 'rapid' || rawCat === 'classical'
+        ? rawCat
+        : 'rapid';
+    const entries = Object.values(db.users)
+      .map((u) => {
+        const elo = getUserElo(u);
+        return {
+          username: u.username,
+          displayName: u.displayName,
+          title: u.title?.trim() || null,
+          role: u.role,
+          rating: elo[cat],
+          elo,
+        };
+      })
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 50);
+    return jsonResponse(200, { category: cat, entries });
+  }
+
   if (method === 'GET' && path === '/groups') {
-    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const allGroups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const uname = currentUser?.username;
+    const groups = allGroups.filter(
+      (g) =>
+        (g.visibility || 'public') === 'public' ||
+        (uname && (g.members.includes(uname) || (g.invites || []).includes(uname))) ||
+        currentUser?.role === 'owner'
+    );
     return jsonResponse(200, { groups });
   }
 
@@ -950,7 +982,11 @@ export async function handleApiRequest(
     if (!currentUser) {
       return jsonResponse(401, { error: 'Sign in to create a group.' });
     }
-    const body = parseBody<{ name?: string; description?: string }>(req);
+    const body = parseBody<{
+      name?: string;
+      description?: string;
+      visibility?: 'public' | 'private';
+    }>(req);
     const name = (body?.name || '').trim().slice(0, 40);
     if (name.length < 2) {
       return jsonResponse(400, { error: 'Group name must be at least 2 characters.' });
@@ -963,13 +999,40 @@ export async function handleApiRequest(
       id: crypto.randomUUID(),
       name,
       description: (body?.description || '').trim().slice(0, 180),
+      visibility: body?.visibility === 'private' ? 'private' : 'public',
       ownerUsername: currentUser.username,
       members: [currentUser.username],
+      invites: [],
       createdAt: Date.now(),
     };
     const next = [group, ...groups];
     await store.setJson(GROUPS_KEY, next);
     return jsonResponse(201, { group, groups: next });
+  }
+
+  if (method === 'POST' && path === '/groups/invite') {
+    if (!currentUser) return jsonResponse(401, { error: 'Sign in required.' });
+    const body = parseBody<{ groupId?: string; username?: string }>(req);
+    const targetName = (body?.username || '').replace(/^@/, '').trim();
+    if (!body?.groupId || !targetName) {
+      return jsonResponse(400, { error: 'groupId and username are required.' });
+    }
+    const targetUser = db.users[normalizeUsername(targetName)];
+    if (!targetUser) {
+      return jsonResponse(404, { error: `No account found for "${targetName}".` });
+    }
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const target = groups.find((g) => g.id === body.groupId);
+    if (!target) return jsonResponse(404, { error: 'Group not found.' });
+    if (!target.members.includes(currentUser.username) && currentUser.role !== 'owner') {
+      return jsonResponse(403, { error: 'Only clan members can invite players.' });
+    }
+    target.invites = target.invites || [];
+    if (!target.members.includes(targetUser.username) && !target.invites.includes(targetUser.username)) {
+      target.invites.push(targetUser.username);
+      await store.setJson(GROUPS_KEY, groups);
+    }
+    return jsonResponse(200, { groups });
   }
 
   if (method === 'POST' && path === '/groups/join') {
@@ -978,10 +1041,16 @@ export async function handleApiRequest(
     const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
     const target = groups.find((g) => g.id === body?.groupId);
     if (!target) return jsonResponse(404, { error: 'Group not found.' });
+    const isPrivate = target.visibility === 'private';
+    const isInvited = (target.invites || []).includes(currentUser.username);
+    if (isPrivate && !isInvited && !target.members.includes(currentUser.username)) {
+      return jsonResponse(403, { error: 'This clan is private. You need an invite to join.' });
+    }
     if (!target.members.includes(currentUser.username)) {
       target.members.push(currentUser.username);
-      await store.setJson(GROUPS_KEY, groups);
     }
+    target.invites = (target.invites || []).filter((u) => u !== currentUser.username);
+    await store.setJson(GROUPS_KEY, groups);
     return jsonResponse(200, { groups });
   }
 
