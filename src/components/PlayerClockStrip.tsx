@@ -1,9 +1,11 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { PieceColor, PieceType } from '../types/chess';
 import { ChessPiece } from './ChessPiece';
+import { TitleBadge } from './TitleBadge';
 
 interface PlayerClockStripProps {
   playerName: string;
+  playerTitle?: string | null;
   color: PieceColor;
   baseMs: number;
   syncedMs: number;
@@ -35,6 +37,7 @@ function formatChessComClock(ms: number, untimed: boolean): string {
 
 export const PlayerClockStrip = memo(function PlayerClockStrip({
   playerName,
+  playerTitle,
   color,
   baseMs,
   syncedMs,
@@ -91,6 +94,7 @@ export const PlayerClockStrip = memo(function PlayerClockStrip({
         </div>
         <div className="player-info">
           <div className="player-name-row">
+            <TitleBadge title={playerTitle} />
             <span className="player-name">{playerName}</span>
             {showChecks && (
               <span className="checks-badge">Checks {checksCount}/3</span>

@@ -57,22 +57,63 @@ export interface PublicUser {
   id: string;
   username: string;
   displayName: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
   createdAt: number;
   trollAccess: TrollAccessSummary;
 }
 
+export interface SavedGameMove {
+  san: string;
+  from: string;
+  to: string;
+  fen: string;
+}
+
+export interface SavedGameRecord {
+  gameId: string;
+  mode: 'pvp' | 'bot';
+  whiteUsername: string;
+  blackUsername: string;
+  whiteTitle: string | null;
+  blackTitle: string | null;
+  variant: string;
+  timeControlLabel: string;
+  winner: 'w' | 'b' | 'draw' | null;
+  status: string;
+  statusReason: string | null;
+  moves: SavedGameMove[];
+  createdAt: number;
+}
+
+export interface UserProfileStats {
+  total: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
   displayName: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
   createdAt: number;
   online: boolean;
+  stats: UserProfileStats;
+  recentGames: SavedGameRecord[];
+}
+
+export interface GroupRecord {
+  id: string;
+  name: string;
+  description: string;
+  ownerUsername: string;
+  members: string[];
+  createdAt: number;
 }
 
 export interface FriendSummary {

@@ -142,6 +142,60 @@ export async function updateMyProfile(input: {
   });
 }
 
+export async function setOwnerUserStaff(
+  username: string,
+  role: 'staff' | 'user'
+): Promise<{ updated: PublicUser; users: PublicUser[] }> {
+  return apiFetch<{ updated: PublicUser; users: PublicUser[] }>('/owner/staff', {
+    method: 'POST',
+    body: JSON.stringify({ username, role }),
+  });
+}
+
+export async function saveCompletedGame(
+  payload: Omit<import('../types/chess').SavedGameRecord, 'createdAt'>
+): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>('/games/save', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchGroups(): Promise<{ groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch<{ groups: import('../types/chess').GroupRecord[] }>('/groups');
+}
+
+export async function createGroup(
+  name: string,
+  description: string
+): Promise<{ group: import('../types/chess').GroupRecord; groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch('/groups/create', {
+    method: 'POST',
+    body: JSON.stringify({ name, description }),
+  });
+}
+
+export async function joinGroup(groupId: string): Promise<{ groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch('/groups/join', {
+    method: 'POST',
+    body: JSON.stringify({ groupId }),
+  });
+}
+
+export async function leaveGroup(groupId: string): Promise<{ groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch('/groups/leave', {
+    method: 'POST',
+    body: JSON.stringify({ groupId }),
+  });
+}
+
+export async function deleteGroup(groupId: string): Promise<{ groups: import('../types/chess').GroupRecord[] }> {
+  return apiFetch('/groups/delete', {
+    method: 'POST',
+    body: JSON.stringify({ groupId }),
+  });
+}
+
 export async function grantTrollAccess(input: {
   username: string;
   mode: 'permanent' | 'temporary' | 'revoke';

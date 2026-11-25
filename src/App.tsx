@@ -49,7 +49,9 @@ import {
   fetchWatchGames,
   publishWatchGame,
   removeWatchGame,
+  fetchUserProfile,
   respondDirectChallenge,
+  saveCompletedGame,
   sendDirectChallenge,
 } from './services/api';
 import { generateRoomCode, RoomTransport } from './services/multiplayer';
@@ -239,6 +241,33 @@ export default function App() {
   const [opponentName, setOpponentName] = useState<string>(() =>
     parseRoomFromUrl() ? 'Waiting for opponent…' : 'Opponent'
   );
+  const [opponentTitle, setOpponentTitle] = useState<string | null>(null);
+  const savedGameIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const clean = opponentName.replace(/^@/, '').trim();
+    if (
+      !clean ||
+      clean === 'Opponent' ||
+      clean === 'Waiting for opponent…' ||
+      clean.startsWith('Stockfish') ||
+      clean.startsWith('Bot')
+    ) {
+      setOpponentTitle(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchUserProfile(clean)
+      .then((res) => {
+        if (!cancelled) setOpponentTitle(res.profile.title);
+      })
+      .catch(() => {
+        if (!cancelled) setOpponentTitle(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [opponentName]);
   const [joinInput, setJoinInput] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -262,6 +291,57 @@ export default function App() {
       status: parseRoomFromUrl() ? 'waiting' : 'active',
     })
   );
+
+  useEffect(() => {
+    if (arenaMode === 'watch') return;
+    if (gameState.status === 'active' || gameState.status === 'waiting') return;
+    if (gameState.moves.length === 0) return;
+
+    const gid = `${roomCode || 'local'}-${gameState.moves[0]?.san}-${gameState.moves.length}-${gameState.status}`;
+    if (savedGameIdsRef.current.has(gid)) return;
+    savedGameIdsRef.current.add(gid);
+
+    const myName = user?.username || guestName || 'Player';
+    const whiteUsername = localColor === 'w' ? myName : opponentName;
+    const blackUsername = localColor === 'b' ? myName : opponentName;
+    const whiteTitle = localColor === 'w' ? (user?.title ?? null) : opponentTitle;
+    const blackTitle = localColor === 'b' ? (user?.title ?? null) : opponentTitle;
+
+    void saveCompletedGame({
+      gameId: gid,
+      mode: arenaMode === 'bot' ? 'bot' : 'pvp',
+      whiteUsername,
+      blackUsername,
+      whiteTitle,
+      blackTitle,
+      variant: gameState.variant,
+      timeControlLabel: gameState.timeControlLabel,
+      winner: gameState.winner,
+      status: gameState.status,
+      statusReason: gameState.statusReason,
+      moves: gameState.moves.map((m) => ({
+        san: m.san,
+        from: m.from,
+        to: m.to,
+        fen: m.fenAfter,
+      })),
+    }).catch(() => undefined);
+  }, [
+    arenaMode,
+    gameState.status,
+    gameState.winner,
+    gameState.statusReason,
+    gameState.moves,
+    gameState.variant,
+    gameState.timeControlLabel,
+    roomCode,
+    localColor,
+    user?.username,
+    user?.title,
+    guestName,
+    opponentName,
+    opponentTitle,
+  ]);
   const [pendingPromotion, setPendingPromotion] = useState<{
     from: string;
     to: string;
@@ -2101,6 +2181,7 @@ export default function App() {
 
               <PlayerClockStrip
                 playerName={topLabel}
+                playerTitle={!isSpectating ? (topColor === localColor ? (user?.title ?? null) : opponentTitle) : null}
                 color={topColor}
                 baseMs={displayBaseMs}
                 syncedMs={topMs}
@@ -2150,6 +2231,7 @@ export default function App() {
 
               <PlayerClockStrip
                 playerName={bottomLabel}
+                playerTitle={!isSpectating ? (bottomColor === localColor ? (user?.title ?? null) : opponentTitle) : null}
                 color={bottomColor}
                 baseMs={displayBaseMs}
                 syncedMs={bottomMs}

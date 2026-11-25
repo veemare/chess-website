@@ -6,6 +6,7 @@ import {
   loginAccount,
   logoutAccount,
   registerAccount,
+  setOwnerUserStaff,
   setOwnerUserTitle,
 } from '../services/api';
 import type { PublicUser } from '../types/chess';
@@ -127,6 +128,25 @@ export function AccountModal({
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update title.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleToggleStaff(username: string, nextRole: 'staff' | 'user') {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await setOwnerUserStaff(username, nextRole);
+      setManagedUsers(res.users);
+      setNotice(
+        nextRole === 'staff'
+          ? `@${res.updated.username} promoted to Staff.`
+          : `@${res.updated.username} removed from Staff.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update staff role.');
     } finally {
       setBusy(false);
     }
@@ -687,6 +707,19 @@ export function AccountModal({
                     </button>
                     {u.role !== 'owner' && (
                       <>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          disabled={busy}
+                          onClick={() =>
+                            void handleToggleStaff(
+                              u.username,
+                              u.role === 'staff' ? 'user' : 'staff'
+                            )
+                          }
+                        >
+                          {u.role === 'staff' ? 'Unstaff' : 'Staff'}
+                        </button>
                         <button
                           type="button"
                           className="btn btn-ghost btn-xs"

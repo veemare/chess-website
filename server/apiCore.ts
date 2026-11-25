@@ -13,7 +13,7 @@ export interface StoredUser {
   displayName: string;
   passwordHash: string;
   salt: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'staff' | 'user';
   title?: string | null;
   bio?: string;
   createdAt: number;
@@ -31,7 +31,7 @@ export interface PublicUser {
   id: string;
   username: string;
   displayName: string;
-  role: 'owner' | 'user';
+  role: 'owner' | 'staff' | 'user';
   title: string | null;
   bio: string;
   createdAt: number;
@@ -109,6 +109,40 @@ export interface ApiResponse {
 
 const DB_KEY = 'db_v1';
 const WATCH_KEY = 'watch_v1';
+const GAMES_KEY = 'games_v1';
+const GROUPS_KEY = 'groups_v1';
+
+export interface SavedGameMove {
+  san: string;
+  from: string;
+  to: string;
+  fen: string;
+}
+
+export interface SavedGameRecord {
+  gameId: string;
+  mode: 'pvp' | 'bot';
+  whiteUsername: string;
+  blackUsername: string;
+  whiteTitle: string | null;
+  blackTitle: string | null;
+  variant: string;
+  timeControlLabel: string;
+  winner: 'w' | 'b' | 'draw' | null;
+  status: string;
+  statusReason: string | null;
+  moves: SavedGameMove[];
+  createdAt: number;
+}
+
+export interface GroupRecord {
+  id: string;
+  name: string;
+  description: string;
+  ownerUsername: string;
+  members: string[];
+  createdAt: number;
+}
 const SESSION_COOKIE = 'vesper_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
@@ -725,6 +759,28 @@ export async function handleApiRequest(
     const now = Date.now();
     const lastSeen = db.presence[target.id] ?? null;
     const online = lastSeen !== null && now - lastSeen <= 45_000;
+    const allGames = (await store.getJson<SavedGameRecord[]>(GAMES_KEY)) || [];
+    const targetLower = target.username.toLowerCase();
+    const userGames = allGames.filter(
+      (g) =>
+        g.whiteUsername.toLowerCase() === targetLower ||
+        g.blackUsername.toLowerCase() === targetLower
+    );
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    for (const g of userGames) {
+      if (g.winner === 'draw') {
+        draws++;
+      } else if (
+        (g.winner === 'w' && g.whiteUsername.toLowerCase() === targetLower) ||
+        (g.winner === 'b' && g.blackUsername.toLowerCase() === targetLower)
+      ) {
+        wins++;
+      } else if (g.winner === 'w' || g.winner === 'b') {
+        losses++;
+      }
+    }
     return jsonResponse(200, {
       profile: {
         id: target.id,
@@ -735,8 +791,137 @@ export async function handleApiRequest(
         bio: target.bio || '',
         createdAt: target.createdAt,
         online,
+        stats: { total: userGames.length, wins, losses, draws },
+        recentGames: userGames.slice(0, 25),
       },
     });
+  }
+
+  if (method === 'POST' && path === '/owner/staff') {
+    if (!currentUser || currentUser.role !== 'owner') {
+      return jsonResponse(403, { error: 'Owner account required.' });
+    }
+    const body = parseBody<{ username?: string; role?: 'staff' | 'user' }>(req);
+    if (!body?.username || (body.role !== 'staff' && body.role !== 'user')) {
+      return jsonResponse(400, { error: 'Target username and valid role (staff/user) required.' });
+    }
+    const target = db.users[normalizeUsername(body.username)];
+    if (!target) {
+      return jsonResponse(404, { error: `No account found for "${body.username.trim()}".` });
+    }
+    if (target.role === 'owner') {
+      return jsonResponse(400, { error: 'Owner role cannot be changed.' });
+    }
+    target.role = body.role;
+    await store.setJson(DB_KEY, db);
+    const now = Date.now();
+    const users = Object.values(db.users)
+      .sort((a, b) => {
+        if (a.role === 'owner' && b.role !== 'owner') return -1;
+        if (b.role === 'owner' && a.role !== 'owner') return 1;
+        return b.createdAt - a.createdAt;
+      })
+      .map((u) => toPublicUser(u, now));
+    return jsonResponse(200, { updated: toPublicUser(target, now), users });
+  }
+
+  if (method === 'POST' && path === '/games/save') {
+    const body = parseBody<Partial<SavedGameRecord>>(req);
+    if (!body?.gameId || !body.whiteUsername || !body.blackUsername || !Array.isArray(body.moves)) {
+      return jsonResponse(400, { error: 'gameId, players, and moves are required.' });
+    }
+    const existing = (await store.getJson<SavedGameRecord[]>(GAMES_KEY)) || [];
+    if (!existing.some((g) => g.gameId === body.gameId)) {
+      const record: SavedGameRecord = {
+        gameId: body.gameId,
+        mode: body.mode === 'bot' ? 'bot' : 'pvp',
+        whiteUsername: body.whiteUsername.slice(0, 32),
+        blackUsername: body.blackUsername.slice(0, 32),
+        whiteTitle: body.whiteTitle ?? null,
+        blackTitle: body.blackTitle ?? null,
+        variant: body.variant || 'standard',
+        timeControlLabel: body.timeControlLabel || '5 | 0',
+        winner: body.winner ?? null,
+        status: body.status || 'finished',
+        statusReason: body.statusReason ?? null,
+        moves: body.moves.slice(0, 300),
+        createdAt: Date.now(),
+      };
+      const updated = [record, ...existing].slice(0, 300);
+      await store.setJson(GAMES_KEY, updated);
+    }
+    return jsonResponse(200, { ok: true });
+  }
+
+  if (method === 'GET' && path === '/groups') {
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    return jsonResponse(200, { groups });
+  }
+
+  if (method === 'POST' && path === '/groups/create') {
+    if (!currentUser) {
+      return jsonResponse(401, { error: 'Sign in to create a group.' });
+    }
+    const body = parseBody<{ name?: string; description?: string }>(req);
+    const name = (body?.name || '').trim().slice(0, 40);
+    if (name.length < 2) {
+      return jsonResponse(400, { error: 'Group name must be at least 2 characters.' });
+    }
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    if (groups.some((g) => g.name.toLowerCase() === name.toLowerCase())) {
+      return jsonResponse(409, { error: 'A group with that name already exists.' });
+    }
+    const group: GroupRecord = {
+      id: crypto.randomUUID(),
+      name,
+      description: (body?.description || '').trim().slice(0, 180),
+      ownerUsername: currentUser.username,
+      members: [currentUser.username],
+      createdAt: Date.now(),
+    };
+    const next = [group, ...groups];
+    await store.setJson(GROUPS_KEY, next);
+    return jsonResponse(201, { group, groups: next });
+  }
+
+  if (method === 'POST' && path === '/groups/join') {
+    if (!currentUser) return jsonResponse(401, { error: 'Sign in to join a group.' });
+    const body = parseBody<{ groupId?: string }>(req);
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const target = groups.find((g) => g.id === body?.groupId);
+    if (!target) return jsonResponse(404, { error: 'Group not found.' });
+    if (!target.members.includes(currentUser.username)) {
+      target.members.push(currentUser.username);
+      await store.setJson(GROUPS_KEY, groups);
+    }
+    return jsonResponse(200, { groups });
+  }
+
+  if (method === 'POST' && path === '/groups/leave') {
+    if (!currentUser) return jsonResponse(401, { error: 'Sign in required.' });
+    const body = parseBody<{ groupId?: string }>(req);
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const target = groups.find((g) => g.id === body?.groupId);
+    if (!target) return jsonResponse(404, { error: 'Group not found.' });
+    target.members = target.members.filter((m) => m !== currentUser.username);
+    await store.setJson(GROUPS_KEY, groups);
+    return jsonResponse(200, { groups });
+  }
+
+  if (method === 'POST' && path === '/groups/delete') {
+    if (!currentUser) return jsonResponse(401, { error: 'Sign in required.' });
+    const body = parseBody<{ groupId?: string }>(req);
+    const groups = (await store.getJson<GroupRecord[]>(GROUPS_KEY)) || [];
+    const target = groups.find((g) => g.id === body?.groupId);
+    if (!target) return jsonResponse(404, { error: 'Group not found.' });
+    const canDelete =
+      currentUser.role === 'owner' ||
+      currentUser.role === 'staff' ||
+      target.ownerUsername === currentUser.username;
+    if (!canDelete) return jsonResponse(403, { error: 'Not authorized to delete this group.' });
+    const next = groups.filter((g) => g.id !== body?.groupId);
+    await store.setJson(GROUPS_KEY, next);
+    return jsonResponse(200, { groups: next });
   }
 
   if (method === 'POST' && path === '/profile/update') {

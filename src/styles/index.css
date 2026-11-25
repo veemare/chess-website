@@ -2084,3 +2084,123 @@ button {
   background: var(--bg-panel);
   border: 1px solid var(--hairline);
 }
+
+.profile-modal-card.is-wide {
+  max-width: 660px;
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stat-box {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  border: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-val {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.profile-games-list,
+.groups-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.review-board-wrap {
+  width: 260px;
+}
+
+.review-controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.review-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.review-moves-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-sm);
+}
+
+.review-move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--hairline);
+  background: var(--bg-panel);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.review-move-chip.is-active {
+  border-color: var(--green);
+  background: rgba(129, 182, 76, 0.2);
+}
+
+.fb-tag {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.fb-best {
+  background: #4d7e23;
+  color: #ffffff;
+}
+
+.fb-good {
+  background: #3a6b35;
+  color: #ffffff;
+}
+
+.fb-inaccuracy {
+  background: #b7791f;
+  color: #ffffff;
+}
+
+.fb-mistake {
+  background: #c05621;
+  color: #ffffff;
+}
+
+.fb-blunder {
+  background: #b33430;
+  color: #ffffff;
+}
